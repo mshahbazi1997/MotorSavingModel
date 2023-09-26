@@ -1,5 +1,7 @@
 import os
 import datetime
+import matplotlib.pyplot as plt
+import motornet as mn
 
 
 def create_directory(directory_name=None):
@@ -24,7 +26,41 @@ def create_directory(directory_name=None):
     return directory_path
 
 
+def plot_training_log(log):
+  ax = plt.subplot(1,1,1)
 
+  ax.semilogy(log)
+
+  ax.set_ylabel("Loss")
+  ax.set_xlabel("Batch #")
+  return ax
+
+
+def plot_simulations(xy, target_xy):
+  target_x = target_xy[:, -1, 0]
+  target_y = target_xy[:, -1, 1]
+
+  plt.figure(figsize=(10,3))
+
+  plt.subplot(1,2,1)
+  plt.ylim([0.3, 0.65])
+  plt.xlim([-0.3, 0.])
+
+  plotor = mn.plotor.plot_pos_over_time
+
+
+  plotor(axis=plt.gca(), cart_results=xy)
+  plt.scatter(target_x, target_y)
+
+  plt.subplot(1,2,2)
+  plt.ylim([-0.1, 0.1])
+  plt.xlim([-0.1, 0.1])
+  plotor(axis=plt.gca(), cart_results=xy - target_xy)
+  plt.axhline(0, c="grey")
+  plt.axvline(0, c="grey")
+  plt.xlabel("X distance to target")
+  plt.ylabel("Y distance to target")
+  plt.show()
 
 
 

@@ -7,15 +7,16 @@ from policy import Policy
 import torch as th
 import numpy as np
 import json
+from joblib import Parallel, delayed
 
 
-def train_net(model_num=1):
+def _train(model_num,ff_coefficient):
   output_folder = create_directory()
   device = th.device("cpu")
 
   # Define task and the effector
   effector = mn.effector.RigidTendonArm26(muscle=mn.muscle.ReluMuscle()) 
-  env = CentreOutFF(effector=effector,max_ep_duration=1.,name='env')
+  env = CentreOutFF(effector=effector,max_ep_duration=1.,name='env',)
 
   # Define network
   policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
@@ -26,7 +27,6 @@ def train_net(model_num=1):
     """L1 loss"""
     return th.mean(th.sum(th.abs(x - y), dim=-1))
 
-
   # Train network
   batch_size = 32
   n_batch = 6000
@@ -35,9 +35,11 @@ def train_net(model_num=1):
 
   for batch in range(n_batch):
     # initialize batch
+
+    # check if you want to load a model TODO
     h = policy.init_hidden(batch_size=batch_size)
 
-    obs, info = env.reset(condition = "train", options={'batch_size':batch_size})
+    obs, info = env.reset(condition = "train",ff_coefficient=ff_coefficient, options={'batch_size':batch_size})
     terminated = False
 
     # initial positions and targets
@@ -88,5 +90,12 @@ def train_net(model_num=1):
   print("done.")
 
 if __name__ == "__main__":
-    model_num = int(sys.argv[1])
-    train_net(model_num=model_num)
+    #model_num = int(sys.argv[1])
+    #_train(model_num=model_num)
+    iter_list = range(4)
+    n_jobs = 2
+    while len(iter_list) > 0:
+        these_iters = iter_list[0:n_jobs]
+        iter_list = iter_list[n_jobs:]
+        result = Parallel(n_jobs=len(these_iters))(delayed(_train)(iteration,8) for iteration in these_iters)
+
