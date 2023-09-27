@@ -2,6 +2,7 @@ import motornet as mn
 import torch as th
 import numpy as np
 from typing import Any
+from typing import Union
 
 
 class CentreOutFF(mn.environment.Environment):
@@ -12,7 +13,13 @@ class CentreOutFF(mn.environment.Environment):
     super().__init__(*args, **kwargs)
     self.__name__ = "CentreOutFF"
 
-  def reset(self, *, seed: int = None, ff_coefficient: float = 0., condition: str = "train", options: dict[str, Any] = None) -> tuple[Any, dict[str, Any]]:
+  def reset(self, *, 
+            seed: int = None, 
+            ff_coefficient: float = 0., 
+            condition: str = "train",
+            catch_trial_perc: float = 0.,
+            go_cue_range: Union[list, tuple, np.ndarray] = (0.10, 0.30),
+            options: dict[str, Any] = None) -> tuple[Any, dict[str, Any]]:
 
     self._set_generator(seed)
 
@@ -22,9 +29,15 @@ class CentreOutFF(mn.environment.Environment):
     joint_state: th.Tensor | np.ndarray | None = options.get('joint_state', None)
     deterministic: bool = options.get('deterministic', False)
   
-
+    self.catch_trial_perc = catch_trial_perc
     self.ff_coefficient = ff_coefficient
 
+    #go_cue_range = np.array(go_cue_range) / self.dt
+    self.go_cue_range = go_cue_range # in seconds
+    self.delay_range = self.go_cue_range
+    
+    # In the reset, i will check if the trial is a catch trial or not
+    catch_trial = np.zeros(batch_size, dtype='float32')
     if (condition=="train"): # train net to reach to random targets
       if batch_size is None:
         batch_size = 1
@@ -32,6 +45,16 @@ class CentreOutFF(mn.environment.Environment):
       joint_state = None
       goal = self.joint2cartesian(self.effector.draw_random_uniform_states(batch_size)).chunk(2, dim=-1)[0]
       self.goal = goal if self.differentiable else self.detach(goal)
+
+      # specify catch trials
+      p = int(np.floor(batch_size * self.catch_trial_perc / 100))
+      catch_trial[np.random.permutation(catch_trial.size)[:p]] = 1.
+      self.catch_trial = catch_trial
+
+      # specify go cue time
+      go_cue_time = np.random.uniform(self.go_cue_range[0],self.go_cue_range[1],batch_size)
+      self.go_cue_time = go_cue_time
+
 
     elif (condition=="test"): # centre-out reaches to each target
 
@@ -55,7 +78,13 @@ class CentreOutFF(mn.environment.Environment):
 
       joint_state = th.from_numpy(np.tile(start_jpv,(batch_size,1)))
       goal = th.from_numpy(goal_states)
+
+      # Not sure about self.differentiable part TODO
       self.goal = goal if self.differentiable else self.detach(goal)
+
+      # specify go cue time
+      go_cue_time = np.tile((self.go_cue_range[0]+self.go_cue_range[1])/2,10)
+      self.go_cue_time = go_cue_time
       
     self.effector.reset(options={"batch_size": batch_size, "joint_state": joint_state})
   
