@@ -90,12 +90,13 @@ def _train(model_num,ff_coefficient):
   print("done.")
 
 if __name__ == "__main__":
-    #model_num = int(sys.argv[1])
-    #_train(model_num=model_num)
-    iter_list = range(4)
-    n_jobs = 2
-    while len(iter_list) > 0:
-        these_iters = iter_list[0:n_jobs]
-        iter_list = iter_list[n_jobs:]
-        result = Parallel(n_jobs=len(these_iters))(delayed(_train)(iteration,8) for iteration in these_iters)
+    model_num = int(sys.argv[1])
+    ff_coefficient = float(sys.argv[2])
+    _train(model_num=model_num,ff_coefficient=ff_coefficient)
+    # iter_list = range(4)
+    # n_jobs = 2
+    # while len(iter_list) > 0:
+    #     these_iters = iter_list[0:n_jobs]
+    #     iter_list = iter_list[n_jobs:]
+    #     result = Parallel(n_jobs=len(these_iters))(delayed(_train)(iteration,8) for iteration in these_iters)
 
