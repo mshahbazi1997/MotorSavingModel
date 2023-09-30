@@ -17,7 +17,7 @@ class CentreOutFF(mn.environment.Environment):
             seed: int = None, 
             ff_coefficient: float = 0., 
             condition: str = "train",
-            catch_trial_perc: float = 0.,
+            catch_trial_perc: float = 50,
             go_cue_range: Union[list, tuple, np.ndarray] = (0.10, 0.30),
             options: dict[str, Any] = None) -> tuple[Any, dict[str, Any]]:
 
@@ -36,11 +36,10 @@ class CentreOutFF(mn.environment.Environment):
     self.go_cue_range = go_cue_range # in seconds
     self.delay_range = self.go_cue_range
     
-    # In the reset, i will check if the trial is a catch trial or not
-    catch_trial = np.zeros(batch_size, dtype='float32')
-    if (condition=="train"): # train net to reach to random targets
-      if batch_size is None:
+    if batch_size is None:
         batch_size = 1
+    
+    if (condition=="train"): # train net to reach to random targets
 
       joint_state = self.effector.draw_random_uniform_states(batch_size)
       init = self.joint2cartesian(joint_state).chunk(2, dim=-1)[0]
@@ -49,21 +48,20 @@ class CentreOutFF(mn.environment.Environment):
       goal = self.joint2cartesian(self.effector.draw_random_uniform_states(batch_size)).chunk(2, dim=-1)[0]
       self.goal = goal if self.differentiable else self.detach(goal)
 
-      # specify catch trials
-      p = int(np.floor(batch_size * self.catch_trial_perc / 100))
-      catch_trial[np.random.permutation(catch_trial.size)[:p]] = 1.
-      self.catch_trial = catch_trial
-
       # specify go cue time
       go_cue_time = np.random.uniform(self.go_cue_range[0],self.go_cue_range[1],batch_size)
       self.go_cue_time = go_cue_time
 
-
     elif (condition=="test"): # centre-out reaches to each target
 
+      angle_set = np.deg2rad(np.arange(0,360,45)) # 8 directions
+      reps        = int(np.ceil(batch_size / len(angle_set)))
+      angle       = np.tile(angle_set, reps=reps)
+      batch_size  = reps * len(angle_set)
 
-      angle = np.deg2rad(np.arange(0,360,45)) # 8 directions
-      batch_size = len(angle)
+      # In the reset, i will check if the trial is a catch trial or not
+      catch_trial = np.zeros(batch_size, dtype='float32')
+
       reaching_distance = 0.1
       
       lb = np.array(self.effector.pos_lower_bound)
@@ -92,7 +90,7 @@ class CentreOutFF(mn.environment.Environment):
       self.init = init if self.differentiable else self.detach(init)
 
       # specify go cue time
-      go_cue_time = np.tile((self.go_cue_range[0]+self.go_cue_range[1])/2,10)
+      go_cue_time = np.tile((self.go_cue_range[0]+self.go_cue_range[1])/2,batch_size)
       self.go_cue_time = go_cue_time
       
     self.effector.reset(options={"batch_size": batch_size, "joint_state": joint_state})
@@ -103,6 +101,13 @@ class CentreOutFF(mn.environment.Environment):
     self.obs_buffer["proprioception"] = [self.get_proprioception()] * len(self.obs_buffer["proprioception"])
     self.obs_buffer["vision"] = [self.get_vision()] * len(self.obs_buffer["vision"])
     self.obs_buffer["action"] = [action] * self.action_frame_stacking
+
+    # specify catch trials
+    # In the reset, i will check if the trial is a catch trial or not
+    catch_trial = np.zeros(batch_size, dtype='float32')
+    p = int(np.floor(batch_size * self.catch_trial_perc / 100))
+    catch_trial[np.random.permutation(catch_trial.size)[:p]] = 1.
+    self.catch_trial = catch_trial
 
     # if catch trial, set the go cue time to max_ep_duration
     # thus the network will not see the go-cue

@@ -16,7 +16,14 @@ def _train(model_num,ff_coefficient):
 
   # Define task and the effector
   effector = mn.effector.RigidTendonArm26(muscle=mn.muscle.ReluMuscle()) 
-  env = CentreOutFF(effector=effector,max_ep_duration=1.,name='env',)
+  env = CentreOutFF(effector=effector,max_ep_duration=1.)
+
+  #hidden_noise         = 1e-3
+  #proprioception_noise = 1e-3,
+  #vision_noise         = 1e-4,
+  #vision_delay         = 0.05,
+  #proprioception_delay = 0.02,
+  #action_noise  = 1e-4,
 
   # Define network
   policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
