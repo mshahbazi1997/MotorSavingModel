@@ -17,8 +17,8 @@ class CentreOutFF(mn.environment.Environment):
             seed: int = None, 
             ff_coefficient: float = 0., 
             condition: str = "train",
-            catch_trial_perc: float = 50,
-            go_cue_range: Union[list, tuple, np.ndarray] = (0.10, 0.30),
+            catch_trial_perc: float = 0,
+            go_cue_range: Union[list, tuple, np.ndarray] = (0.0, 0.0),
             options: dict[str, Any] = None) -> tuple[Any, dict[str, Any]]:
 
     self._set_generator(seed)
@@ -42,8 +42,6 @@ class CentreOutFF(mn.environment.Environment):
     if (condition=="train"): # train net to reach to random targets
 
       joint_state = self.effector.draw_random_uniform_states(batch_size)
-      init = self.joint2cartesian(joint_state).chunk(2, dim=-1)[0]
-      self.init = init if self.differentiable else self.detach(init)
 
       goal = self.joint2cartesian(self.effector.draw_random_uniform_states(batch_size)).chunk(2, dim=-1)[0]
       self.goal = goal if self.differentiable else self.detach(goal)
@@ -72,22 +70,15 @@ class CentreOutFF(mn.environment.Environment):
       start_cpv = self.joint2cartesian(start_jpv).numpy()
       end_cp = reaching_distance * np.stack([np.cos(angle), np.sin(angle)], axis=-1)
 
-      init_states = start_cpv[:,:2]
-      init_states = np.tile(init_states,(batch_size,1))
-      init_states = init_states.astype(np.float32)
-
       goal_states = start_cpv + np.concatenate([end_cp, np.zeros_like(end_cp)], axis=-1)
       goal_states = goal_states[:,:2]
       goal_states = goal_states.astype(np.float32)
 
-
       joint_state = th.from_numpy(np.tile(start_jpv,(batch_size,1)))
       goal = th.from_numpy(goal_states)
-      init = th.from_numpy(init_states)
 
       # Not sure about self.differentiable part TODO
       self.goal = goal if self.differentiable else self.detach(goal)
-      self.init = init if self.differentiable else self.detach(init)
 
       # specify go cue time
       go_cue_time = np.tile((self.go_cue_range[0]+self.go_cue_range[1])/2,batch_size)
@@ -112,17 +103,21 @@ class CentreOutFF(mn.environment.Environment):
     # if catch trial, set the go cue time to max_ep_duration
     # thus the network will not see the go-cue
     self.go_cue_time[self.catch_trial==1] = self.max_ep_duration
-    
-
-    self.go_cue = th.zeros((batch_size,1)).to(self.device)
+    #self.go_cue = th.zeros((batch_size,1)).to(self.device)
+    self.go_cue = th.ones((batch_size,1)).to(self.device)
 
     obs = self.get_obs(deterministic=deterministic)
+
+    # initial states
+    self.init = self.states['fingertip']
+
     info = {
       "states": self.states,
       "action": action,
       "noisy action": action,  # no noise here so it is the same
       "goal": self.goal,
       }
+    
     return obs, info
 
   def step(self, action, deterministic: bool = False):
@@ -144,10 +139,11 @@ class CentreOutFF(mn.environment.Environment):
     # add endpoiont_load
     self.effector.step(noisy_action,endpoiont_load=endpoint_load)
     self.goal = self.goal.clone()
+    self.init = self.init.clone()
 
     # specify go cue time
-    mask = self.elapsed >= (self.go_cue_time + self.vision_delay * self.dt)
-    self.go_cue[mask] = 1
+    #mask = self.elapsed >= (self.go_cue_time + self.vision_delay * self.dt)
+    #self.go_cue[mask] = 1
 
 
     obs = self.get_obs(action=noisy_action)
@@ -179,7 +175,7 @@ class CentreOutFF(mn.environment.Environment):
       self.goal,
       self.obs_buffer["vision"][0],  # oldest element
       self.obs_buffer["proprioception"][0],   # oldest element
-      self.go_cue, # sepcify go cue as an input to the network
+      #self.go_cue, # sepcify go cue as an input to the network
       ]
     obs = th.cat(obs_as_list, dim=-1)
 
