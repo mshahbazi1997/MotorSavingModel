@@ -14,15 +14,14 @@ class CentreOutFF(mn.environment.Environment):
     self.__name__ = "CentreOutFF"
 
   def reset(self, *, 
-            seed: int = None, 
+            seed: int | None = None, 
             ff_coefficient: float = 0., 
             condition: str = "train",
-            catch_trial_perc: float = 0,
-            go_cue_range: Union[list, tuple, np.ndarray] = (0.0, 0.0),
-            options: dict[str, Any] = None) -> tuple[Any, dict[str, Any]]:
+            catch_trial_perc: float = 50,
+            go_cue_range: Union[list, tuple, np.ndarray] = (0.1, 0.3),
+            options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
 
     self._set_generator(seed)
-
 
     options = {} if options is None else options
     batch_size: int = options.get('batch_size', 1)
@@ -31,13 +30,7 @@ class CentreOutFF(mn.environment.Environment):
   
     self.catch_trial_perc = catch_trial_perc
     self.ff_coefficient = ff_coefficient
-
-    #go_cue_range = np.array(go_cue_range) / self.dt
     self.go_cue_range = go_cue_range # in seconds
-    self.delay_range = self.go_cue_range
-    
-    if batch_size is None:
-        batch_size = 1
     
     if (condition=="train"): # train net to reach to random targets
 
@@ -57,11 +50,7 @@ class CentreOutFF(mn.environment.Environment):
       angle       = np.tile(angle_set, reps=reps)
       batch_size  = reps * len(angle_set)
 
-      # In the reset, i will check if the trial is a catch trial or not
-      catch_trial = np.zeros(batch_size, dtype='float32')
-
       reaching_distance = 0.1
-      
       lb = np.array(self.effector.pos_lower_bound)
       ub = np.array(self.effector.pos_upper_bound)
       start_position = lb + (ub - lb) / 2
@@ -103,8 +92,7 @@ class CentreOutFF(mn.environment.Environment):
     # if catch trial, set the go cue time to max_ep_duration
     # thus the network will not see the go-cue
     self.go_cue_time[self.catch_trial==1] = self.max_ep_duration
-    #self.go_cue = th.zeros((batch_size,1)).to(self.device)
-    self.go_cue = th.ones((batch_size,1)).to(self.device)
+    self.go_cue = th.zeros((batch_size,1)).to(self.device)
 
     obs = self.get_obs(deterministic=deterministic)
 
@@ -137,15 +125,15 @@ class CentreOutFF(mn.environment.Environment):
     endpoint_load = self.ff_coefficient * projection
 
     # add endpoiont_load
-    #self.effector.step(noisy_action,endpoiont_load=endpoint_load)
-    self.effector.step(noisy_action)
+    self.effector.step(noisy_action,endpoiont_load=endpoint_load)
+
+    # TODO: what is the purpose of clone here?
     self.goal = self.goal.clone()
     self.init = self.init.clone()
 
     # specify go cue time
-    #mask = self.elapsed >= (self.go_cue_time + self.vision_delay * self.dt)
-    #self.go_cue[mask] = 1
-
+    mask = self.elapsed >= (self.go_cue_time + (self.vision_delay-1) * self.dt)
+    self.go_cue[mask] = 1
 
     obs = self.get_obs(action=noisy_action)
     reward = None
@@ -176,7 +164,7 @@ class CentreOutFF(mn.environment.Environment):
       self.goal,
       self.obs_buffer["vision"][0],  # oldest element
       self.obs_buffer["proprioception"][0],   # oldest element
-      #self.go_cue, # sepcify go cue as an input to the network
+      self.go_cue, # sepcify go cue as an input to the network
       ]
     obs = th.cat(obs_as_list, dim=-1)
 

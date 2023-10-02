@@ -16,7 +16,7 @@ def _train(model_num,ff_coefficient):
 
   # Define task and the effector
   effector = mn.effector.RigidTendonArm26(muscle=mn.muscle.ReluMuscle()) 
-  env = CentreOutFF(effector=effector,max_ep_duration=1.)
+  env = CentreOutFF(effector=effector,max_ep_duration=1)
 
   #hidden_noise         = 1e-3
   #proprioception_noise = 1e-3,
