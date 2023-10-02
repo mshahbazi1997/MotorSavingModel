@@ -50,21 +50,38 @@ def _train(model_num,ff_coefficient):
     terminated = False
 
     # initial positions and targets
-    xy = [info["states"]["fingertip"][:, None, :]]
+    xy = [info['states']['cartesian'][:, None, :]]
     tg = [info["goal"][:, None, :]]
+    all_actions = []
+    all_muscle = []
+    all_hidden = []
 
     # simulate whole episode
     while not terminated:  # will run until `max_ep_duration` is reached
       action, h = policy(obs, h)
       obs, reward, terminated, truncated, info = env.step(action=action)
 
-      xy.append(info["states"]["fingertip"][:, None, :])  # trajectories
+      xy.append(info['states']['cartesian'][:, None, :])  # trajectories
       tg.append(info["goal"][:, None, :])  # targets
+      all_actions.append(action[:, None, :])
+      all_muscle.append(info['states']['muscle'][:,0,None,:])
+      all_hidden.append(h[0,:,None,:])
 
     # concatenate into a (batch_size, n_timesteps, xy) tensor
     xy = th.cat(xy, axis=1)
     tg = th.cat(tg, axis=1)
-    loss = l1(xy, tg)  # L1 loss on position
+    all_hidden = th.cat(all_hidden, axis=1)
+    all_actions = th.cat(all_actions, axis=1)
+    all_muscle = th.cat(all_muscle, axis=1)
+
+    # calculate losses
+    cartesian_loss = l1(xy[:,:,0:2], tg)
+    muscle_loss = 0.1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
+    velocity_loss = 0.1 * th.mean(th.sum(th.abs(xy[:,:,2:]), dim=-1))
+    #input_loss = 1e-4 * th.sum(th.square(policy.gru.weight_ih_l0))
+    #recurrent_loss = 1e-4 * th.sum(th.square(policy.gru.weight_hh_l0))
+    
+    loss = cartesian_loss + muscle_loss + velocity_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
