@@ -41,7 +41,7 @@ class CentreOutFF(mn.environment.Environment):
     
     if (condition=="train"): # train net to reach to random targets
 
-      joint_state = self.effector.draw_random_uniform_states(batch_size)
+      joint_state = None
 
       goal = self.joint2cartesian(self.effector.draw_random_uniform_states(batch_size)).chunk(2, dim=-1)[0]
       self.goal = goal if self.differentiable else self.detach(goal)
@@ -137,7 +137,8 @@ class CentreOutFF(mn.environment.Environment):
     endpoint_load = self.ff_coefficient * projection
 
     # add endpoiont_load
-    self.effector.step(noisy_action,endpoiont_load=endpoint_load)
+    #self.effector.step(noisy_action,endpoiont_load=endpoint_load)
+    self.effector.step(noisy_action)
     self.goal = self.goal.clone()
     self.init = self.init.clone()
 
