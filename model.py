@@ -8,25 +8,62 @@ import torch as th
 import numpy as np
 import json
 from joblib import Parallel, delayed
+from pathlib import Path
 
 
-def _train(model_num,ff_coefficient):
-  output_folder = create_directory()
+
+def _train(model_num,ff_coefficient,phase,directory_name=None):
+  output_folder = create_directory(directory_name=directory_name)
+  model_name = "model{:02d}".format(model_num)
   device = th.device("cpu")
 
   # Define task and the effector
   effector = mn.effector.RigidTendonArm26(muscle=mn.muscle.ReluMuscle()) 
-  env = CentreOutFF(effector=effector,max_ep_duration=1)
 
-  #hidden_noise         = 1e-3
-  #proprioception_noise = 1e-3,
-  #vision_noise         = 1e-4,
-  #vision_delay         = 0.05,
-  #proprioception_delay = 0.02,
-  #action_noise  = 1e-4,
+  if phase==1:
+    #hidden_noise         = 1e-3
+    action_noise         = 1e-4
+    proprioception_noise = 1e-3
+    vision_noise         = 1e-4
+    vision_delay         = 0.05
+    proprioception_delay = 0.02
+    env = CentreOutFF(effector=effector,max_ep_duration=1,action_noise=action_noise,
+                      proprioception_noise=proprioception_noise,vision_noise=vision_noise,
+                      proprioception_delay=proprioception_delay,
+                      vision_delay=vision_delay)
+    # Define network
+    policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+  else:
+    # load config and weights from the previous phase
+    weight_file = [directory for directory in Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_weights') if directory.is_file()][0]
+    cfg_file = [directory for directory in Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_cfg.json') if directory.is_file()][0]
 
-  # Define network
-  policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+    # effector
+    muscle_name = cfg['effector']['muscle']['name']
+    timestep = cfg['effector']['dt']
+    muscle = getattr(mn.muscle,muscle_name)()
+    effector = mn.effector.RigidTendonArm26(muscle=muscle,timestep=timestep)
+
+    # delay
+    proprioception_delay = cfg['proprioception_delay']*cfg['dt']
+    vision_delay = cfg['vision_delay']*cfg['dt']
+
+    # noise
+    action_noise = cfg['action_noise'][0]
+    proprioception_noise = cfg['proprioception_noise'][0]
+    vision_noise = cfg['vision_noise'][0]
+
+    # initialize environment
+    max_ep_duration = cfg['max_ep_duration']
+    env = CentreOutFF(effector=effector,max_ep_duration=max_ep_duration,name=cfg['name'],
+                      action_noise=action_noise,proprioception_noise=proprioception_noise,
+                      vision_noise=vision_noise,proprioception_delay=proprioception_delay,
+                      vision_delay=vision_delay)
+
+    policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+    policy.load_state_dict(th.load(weight_file))
+
+  
   optimizer = th.optim.Adam(policy.parameters(), lr=10**-3)
 
   # Define Loss function
@@ -41,7 +78,6 @@ def _train(model_num,ff_coefficient):
   interval = 250
 
   for batch in range(n_batch):
-    # initialize batch
 
     # check if you want to load a model TODO
     h = policy.init_hidden(batch_size=batch_size)
@@ -58,7 +94,7 @@ def _train(model_num,ff_coefficient):
 
     # simulate whole episode
     while not terminated:  # will run until `max_ep_duration` is reached
-      action, h = policy(obs, h)
+      action, h = policy(obs,h)
       obs, reward, terminated, truncated, info = env.step(action=action)
 
       xy.append(info['states']['cartesian'][:, None, :])  # trajectories
@@ -78,10 +114,10 @@ def _train(model_num,ff_coefficient):
     cartesian_loss = l1(xy[:,:,0:2], tg)
     muscle_loss = 0.1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
     velocity_loss = 0.1 * th.mean(th.sum(th.abs(xy[:,:,2:]), dim=-1))
-    #input_loss = 1e-4 * th.sum(th.square(policy.gru.weight_ih_l0))
-    #recurrent_loss = 1e-4 * th.sum(th.square(policy.gru.weight_hh_l0))
-    
-    loss = cartesian_loss + muscle_loss + velocity_loss
+    input_loss = 1e-4 * th.sum(th.square(policy.gru.weight_ih_l0))
+    recurrent_loss = 1e-4 * th.sum(th.square(policy.gru.weight_hh_l0))
+
+    loss = cartesian_loss + muscle_loss + velocity_loss + input_loss + recurrent_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -94,9 +130,9 @@ def _train(model_num,ff_coefficient):
       print("Batch {}/{} Done, mean policy loss: {}".format(batch, n_batch, sum(losses[-interval:])/interval))
 
   # Save model
-  weight_file = os.path.join(output_folder, f"model{model_num}_weights")
-  log_file = os.path.join(output_folder, f"model{model_num}_log.json")
-  cfg_file = os.path.join(output_folder, f"model{model_num}_cfg.json")
+  weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
+  log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_log.json")
+  cfg_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_cfg.json")
 
 
   # save model weights
@@ -115,12 +151,15 @@ def _train(model_num,ff_coefficient):
 
 if __name__ == "__main__":
     model_num = int(sys.argv[1])
-    ff_coefficient = float(sys.argv[2])
-    _train(model_num=model_num,ff_coefficient=ff_coefficient)
-    # iter_list = range(4)
-    # n_jobs = 2
-    # while len(iter_list) > 0:
-    #     these_iters = iter_list[0:n_jobs]
-    #     iter_list = iter_list[n_jobs:]
-    #     result = Parallel(n_jobs=len(these_iters))(delayed(_train)(iteration,8) for iteration in these_iters)
+    ff_coefficient = float(sys.argv[1])
+    phase = int(sys.argv[2])
+    directory_name = sys.argv[3]
+    #_train(model_num=model_num,ff_coefficient=ff_coefficient)
+
+    iter_list = range(16)
+    n_jobs = 8
+    while len(iter_list) > 0:
+        these_iters = iter_list[0:n_jobs]
+        iter_list = iter_list[n_jobs:]
+        result = Parallel(n_jobs=len(these_iters))(delayed(_train)(iteration,ff_coefficient,phase,directory_name=directory_name) for iteration in these_iters)
 

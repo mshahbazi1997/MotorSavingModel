@@ -5,6 +5,7 @@ from typing import Any
 from typing import Union
 
 
+
 class CentreOutFF(mn.environment.Environment):
   """A reach to a random target from a random starting position."""
 
@@ -73,7 +74,7 @@ class CentreOutFF(mn.environment.Environment):
       go_cue_time = np.tile((self.go_cue_range[0]+self.go_cue_range[1])/2,batch_size)
       self.go_cue_time = go_cue_time
       
-    self.effector.reset(options={"batch_size": batch_size, "joint_state": joint_state})
+    self.effector.reset(options={"batch_size": batch_size,"joint_state": joint_state})
 
     self.elapsed = 0.
     action = th.zeros((batch_size, self.muscle.n_muscles)).to(self.device)
@@ -94,10 +95,14 @@ class CentreOutFF(mn.environment.Environment):
     self.go_cue_time[self.catch_trial==1] = self.max_ep_duration
     self.go_cue = th.zeros((batch_size,1)).to(self.device)
 
+
     obs = self.get_obs(deterministic=deterministic)
 
     # initial states
     self.init = self.states['fingertip']
+    
+    endpoint_load = th.zeros((batch_size,2)).to(self.device)
+    self.endpoint_load = endpoint_load
 
     info = {
       "states": self.states,
@@ -105,10 +110,9 @@ class CentreOutFF(mn.environment.Environment):
       "noisy action": action,  # no noise here so it is the same
       "goal": self.goal,
       }
-    
     return obs, info
 
-  def step(self, action, deterministic: bool = False):
+  def step(self, action, deterministic: bool = False, **kwargs):
     self.elapsed += self.dt
 
     if deterministic is False:
@@ -116,16 +120,12 @@ class CentreOutFF(mn.environment.Environment):
     else:
       noisy_action = action
     
-    # Calculate endpoiont_load
-    vel = self.effector.joint2cartesian(self.states['joint'])[:,2:]
-    FF_matvel = th.tensor([[0, 1], [-1, 0]], dtype=th.float32)
-    projection_x = th.sum(FF_matvel[0] * vel, dim=1, keepdim=True) 
-    projection_y = th.sum(FF_matvel[1] * vel, dim=1, keepdim=True)
-    projection = th.cat([projection_x, projection_y], dim=1)
-    endpoint_load = self.ff_coefficient * projection
+    self.effector.step(noisy_action,endpoint_load=self.endpoint_load) # **kwargs
 
-    # add endpoiont_load
-    self.effector.step(noisy_action,endpoiont_load=endpoint_load)
+    # Calculate endpoiont_load
+    vel = self.states["cartesian"][:,2:]
+    FF_matvel = th.tensor([[0, 1], [-1, 0]], dtype=th.float32)
+    self.endpoint_load = self.ff_coefficient * (vel@FF_matvel.T)
 
     # TODO: what is the purpose of clone here?
     self.goal = self.goal.clone()
