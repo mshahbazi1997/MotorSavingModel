@@ -36,6 +36,7 @@ class Policy(th.nn.Module):
         # TODO
         # Here I can add noise to h0 before applying
         y, h = self.gru(x[:, None, :], h0)
+        #hidden_noise         = 1e-3
         u = self.sigmoid(self.fc(y)).squeeze(dim=1)
         return u, h
     

@@ -1,6 +1,6 @@
 import os
 import sys 
-from utils import create_directory
+from utils import create_directory, load_env
 import motornet as mn
 from task import CentreOutFF
 from policy import Policy
@@ -10,63 +10,29 @@ import json
 from joblib import Parallel, delayed
 from pathlib import Path
 
-
-
-def _train(model_num,ff_coefficient,phase,directory_name=None):
+def train(model_num,ff_coefficient,phase,directory_name=None):
   output_folder = create_directory(directory_name=directory_name)
   model_name = "model{:02d}".format(model_num)
   device = th.device("cpu")
 
-  # Define task and the effector
-  effector = mn.effector.RigidTendonArm26(muscle=mn.muscle.ReluMuscle()) 
-
-  if phase==1:
-    #hidden_noise         = 1e-3
-    action_noise         = 1e-4
-    proprioception_noise = 1e-3
-    vision_noise         = 1e-4
-    vision_delay         = 0.05
-    proprioception_delay = 0.02
-    env = CentreOutFF(effector=effector,max_ep_duration=1,action_noise=action_noise,
-                      proprioception_noise=proprioception_noise,vision_noise=vision_noise,
-                      proprioception_delay=proprioception_delay,
-                      vision_delay=vision_delay)
-    # Define network
-    policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
-  else:
+  if phase>1:
     # load config and weights from the previous phase
-    weight_file = [directory for directory in Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_weights') if directory.is_file()][0]
-    cfg_file = [directory for directory in Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_cfg.json') if directory.is_file()][0]
+    weight_file = list(Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_weights'))[0]
+    cfg_file = list(Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_cfg.json'))[0]
 
     # load configuration
     with open(cfg_file,'r') as file:
       cfg = json.load(file)
 
-    # effector
-    muscle_name = cfg['effector']['muscle']['name']
-    timestep = cfg['effector']['dt']
-    muscle = getattr(mn.muscle,muscle_name)()
-    effector = mn.effector.RigidTendonArm26(muscle=muscle,timestep=timestep)
-
-    # delay
-    proprioception_delay = cfg['proprioception_delay']*cfg['dt']
-    vision_delay = cfg['vision_delay']*cfg['dt']
-
-    # noise
-    action_noise = cfg['action_noise'][0]
-    proprioception_noise = cfg['proprioception_noise'][0]
-    vision_noise = cfg['vision_noise'][0]
-
-    # initialize environment
-    max_ep_duration = cfg['max_ep_duration']
-    env = CentreOutFF(effector=effector,max_ep_duration=max_ep_duration,name=cfg['name'],
-                      action_noise=action_noise,proprioception_noise=proprioception_noise,
-                      vision_noise=vision_noise,proprioception_delay=proprioception_delay,
-                      vision_delay=vision_delay)
-
+    # environment and network
+    env = load_env(CentreOutFF,cfg)
     policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
     policy.load_state_dict(th.load(weight_file))
 
+  else:
+    # environment and network
+    env = load_env(CentreOutFF)    
+    policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
   
   optimizer = th.optim.Adam(policy.parameters(), lr=10**-3)
 
@@ -153,17 +119,57 @@ def _train(model_num,ff_coefficient,phase,directory_name=None):
 
   print("done.")
 
+def test(cfg_file,weight_file):
+  device = th.device("cpu")
+
+  # load configuration
+  with open(cfg_file,'r') as file:
+    cfg = json.load(file)
+
+  ff_coefficient=cfg['ff_coefficient']
+
+  # environment and network
+  env = load_env(CentreOutFF, cfg)
+  policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+  policy.load_state_dict(th.load(weight_file))
+
+  batch_size = 8
+  # initialize batch
+  obs, info = env.reset(condition ="test",catch_trial_perc=0,options={'batch_size':batch_size},ff_coefficient=ff_coefficient)
+
+  h = policy.init_hidden(batch_size=batch_size)
+  terminated = False
+
+  # initial positions and targets
+  xy = [info["states"]["fingertip"][:, None, :]]
+  tg = [info["goal"][:, None, :]]
+
+  # simulate whole episode
+  while not terminated:  # will run until `max_ep_duration` is reached
+    action, h = policy(obs, h)
+
+    obs, reward, terminated, truncated, info = env.step(action=action)  
+    xy.append(info["states"]["fingertip"][:,None,:])  # trajectories
+    tg.append(info["goal"][:,None,:])  # targets
+
+  # concatenate into a (batch_size, n_timesteps, xy) tensor
+  xy = th.detach(th.cat(xy, axis=1))
+  tg = th.detach(th.cat(tg, axis=1))
+
+  return xy, tg
+
+
 if __name__ == "__main__":
     model_num = int(sys.argv[1])
     ff_coefficient = float(sys.argv[1])
     phase = int(sys.argv[2])
     directory_name = sys.argv[3]
-    #_train(model_num=model_num,ff_coefficient=ff_coefficient)
+    #train(model_num=model_num,ff_coefficient=ff_coefficient)
 
     iter_list = range(16)
     n_jobs = 8
     while len(iter_list) > 0:
         these_iters = iter_list[0:n_jobs]
         iter_list = iter_list[n_jobs:]
-        result = Parallel(n_jobs=len(these_iters))(delayed(_train)(iteration,ff_coefficient,phase,directory_name=directory_name) for iteration in these_iters)
+        result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,directory_name=directory_name) for iteration in these_iters)
 
