@@ -38,6 +38,10 @@ def _train(model_num,ff_coefficient,phase,directory_name=None):
     weight_file = [directory for directory in Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_weights') if directory.is_file()][0]
     cfg_file = [directory for directory in Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_cfg.json') if directory.is_file()][0]
 
+    # load configuration
+    with open(cfg_file,'r') as file:
+      cfg = json.load(file)
+
     # effector
     muscle_name = cfg['effector']['muscle']['name']
     timestep = cfg['effector']['dt']
