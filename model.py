@@ -43,7 +43,7 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
 
   # Train network
   batch_size = 32
-  n_batch = 6000
+  n_batch = 18000
   losses = []
   interval = 250
 
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     #train(model_num=model_num,ff_coefficient=ff_coefficient)
 
     iter_list = range(16)
-    n_jobs = 8
+    n_jobs = 16
     while len(iter_list) > 0:
         these_iters = iter_list[0:n_jobs]
         iter_list = iter_list[n_jobs:]
