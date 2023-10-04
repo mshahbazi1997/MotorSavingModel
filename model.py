@@ -119,14 +119,16 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
 
   print("done.")
 
-def test(cfg_file,weight_file):
+def test(cfg_file,weight_file,ff_coefficient=None):
   device = th.device("cpu")
 
   # load configuration
   with open(cfg_file,'r') as file:
     cfg = json.load(file)
 
-  ff_coefficient=cfg['ff_coefficient']
+  if ff_coefficient is None:
+    ff_coefficient=cfg['ff_coefficient']
+    
 
   # environment and network
   env = load_env(CentreOutFF, cfg)
