@@ -34,7 +34,7 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     env = load_env(CentreOutFF)    
     policy = Policy(env.observation_space.shape[0], 100, env.n_muscles, device=device)
   
-  optimizer = th.optim.Adam(policy.parameters(), lr=10**-3)
+  optimizer = th.optim.sgd(policy.parameters(), lr=10**-3)
 
   # Define Loss function
   def l1(x, y):
@@ -45,6 +45,7 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
   batch_size = 65
   n_batch = 30000
   losses = []
+  position_loss = []
   interval = 3000
 
   for batch in range(n_batch):
@@ -87,7 +88,7 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     input_loss = 1e-4 * th.sum(th.square(policy.gru.weight_ih_l0))
     recurrent_loss = 1e-4 * th.sum(th.square(policy.gru.weight_hh_l0))
 
-    loss = cartesian_loss + muscle_loss + input_loss + recurrent_loss #velocity_loss
+    loss = cartesian_loss + muscle_loss + velocity_loss + input_loss + recurrent_loss 
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -95,6 +96,7 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)  # important!
     optimizer.step()
     losses.append(loss.item())
+    position_loss.append(cartesian_loss.item())
 
     if (batch % interval == 0) and (batch != 0):
       print("Batch {}/{} Done, mean policy loss: {}".format(batch, n_batch, sum(losses[-interval:])/interval))
@@ -110,7 +112,8 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
 
   # save training history (log)
   with open(log_file, 'w') as file:
-    json.dump(losses, file)
+    #json.dump(losses, file)
+    json.dump({'losses':losses,'position_loss':position_loss}, file)
 
   # save environment configuration dictionary
   cfg = env.get_save_config()
@@ -132,7 +135,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
 
   # environment and network
   env = load_env(CentreOutFF, cfg)
-  policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+  policy = Policy(env.observation_space.shape[0], 100, env.n_muscles, device=device)
   policy.load_state_dict(th.load(weight_file))
 
   batch_size = 8
