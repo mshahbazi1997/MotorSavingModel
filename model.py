@@ -34,7 +34,7 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     env = load_env(CentreOutFF)    
     policy = Policy(env.observation_space.shape[0], 100, env.n_muscles, device=device)
   
-  optimizer = th.optim.sgd(policy.parameters(), lr=10**-3)
+  optimizer = th.optim.SGD(policy.parameters(), lr=10**-3)
 
   # Define Loss function
   def l1(x, y):
