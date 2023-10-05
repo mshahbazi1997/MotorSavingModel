@@ -168,10 +168,15 @@ def test(cfg_file,weight_file,ff_coefficient=None):
 
 if __name__ == "__main__":
     model_num = int(sys.argv[1])
-    ff_coefficient = float(sys.argv[1])
-    phase = int(sys.argv[2])
-    directory_name = sys.argv[3]
+    ff_coefficient = float(sys.argv[2])
+    phase = int(sys.argv[3])
+    directory_name = sys.argv[4]
     train(model_num,ff_coefficient,phase,directory_name)
+
+
+    #ff_coefficient = float(sys.argv[1])
+    #phase = int(sys.argv[2])
+    #directory_name = sys.argv[3]
 
     # iter_list = range(16)
     # n_jobs = 16
