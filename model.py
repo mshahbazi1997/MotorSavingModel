@@ -165,21 +165,21 @@ def test(cfg_file,weight_file,ff_coefficient=None):
 
 
 if __name__ == "__main__":
-    model_num = int(sys.argv[1])
-    ff_coefficient = float(sys.argv[2])
-    phase = int(sys.argv[3])
-    directory_name = sys.argv[4]
-    train(model_num,ff_coefficient,phase,directory_name)
+    # model_num = int(sys.argv[1])
+    # ff_coefficient = float(sys.argv[2])
+    # phase = int(sys.argv[3])
+    # directory_name = sys.argv[4]
+    # train(model_num,ff_coefficient,phase,directory_name)
 
 
-    #ff_coefficient = float(sys.argv[1])
-    #phase = int(sys.argv[2])
-    #directory_name = sys.argv[3]
+    ff_coefficient = float(sys.argv[1])
+    phase = int(sys.argv[2])
+    directory_name = sys.argv[3]
 
-    # iter_list = range(16)
-    # n_jobs = 16
-    # while len(iter_list) > 0:
-    #     these_iters = iter_list[0:n_jobs]
-    #     iter_list = iter_list[n_jobs:]
-    #     result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,directory_name=directory_name) for iteration in these_iters)
+    iter_list = range(16)
+    n_jobs = 16
+    while len(iter_list) > 0:
+        these_iters = iter_list[0:n_jobs]
+        iter_list = iter_list[n_jobs:]
+        result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,directory_name=directory_name) for iteration in these_iters)
 
