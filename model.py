@@ -26,15 +26,15 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
 
     # environment and network
     env = load_env(CentreOutFF,cfg)
-    policy = Policy(env.observation_space.shape[0], 100, env.n_muscles, device=device)
+    policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
     policy.load_state_dict(th.load(weight_file))
 
   else:
     # environment and network
     env = load_env(CentreOutFF)    
-    policy = Policy(env.observation_space.shape[0], 100, env.n_muscles, device=device)
+    policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
   
-  optimizer = th.optim.SGD(policy.parameters(), lr=0.05) # 10**-3
+  optimizer = th.optim.Adam(policy.parameters(), lr=0.001) # 10**-3
 
   # Define Loss function
   def l1(x, y):
@@ -42,8 +42,8 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     return th.mean(th.sum(th.abs(x - y), dim=-1))
 
   # Train network
-  batch_size = 100
-  n_batch = 30000
+  batch_size = 65
+  n_batch = 50000
   losses = []
   position_loss = []
   interval = 1000
@@ -83,14 +83,12 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
 
     # calculate losses
     cartesian_loss = l1(xy[:,:,0:2], tg)
-    muscle_loss = 0.1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
-    #velocity_loss = 0.1 * th.mean(th.sum(th.abs(xy[:,:,2:]), dim=-1))
-    #input_loss = 1e-4 * th.sum(th.square(policy.gru.weight_ih_l0))
-    #recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
     action_loss = 1e-5 * th.sum(th.abs(all_actions))
+    hidden_loss = 1e-6 * th.sum(th.abs(all_hidden))
+    hidden_diff_loss = 1e-7 * th.sum(th.abs(th.diff(all_hidden, dim=1)))
+    #muscle_loss = 0.1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
 
-    #loss = cartesian_loss + muscle_loss + velocity_loss + input_loss + recurrent_loss
-    loss = cartesian_loss + action_loss
+    loss = cartesian_loss + action_loss + hidden_loss + hidden_diff_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -137,7 +135,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
 
   # environment and network
   env = load_env(CentreOutFF, cfg)
-  policy = Policy(env.observation_space.shape[0], 100, env.n_muscles, device=device)
+  policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
   policy.load_state_dict(th.load(weight_file))
 
   batch_size = 8
