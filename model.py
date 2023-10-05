@@ -42,11 +42,11 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     return th.mean(th.sum(th.abs(x - y), dim=-1))
 
   # Train network
-  batch_size = 65
+  batch_size = 100
   n_batch = 30000
   losses = []
   position_loss = []
-  interval = 3000
+  interval = 1000
 
   for batch in range(n_batch):
 
@@ -84,11 +84,13 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     # calculate losses
     cartesian_loss = l1(xy[:,:,0:2], tg)
     muscle_loss = 0.1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
-    velocity_loss = 0.1 * th.mean(th.sum(th.abs(xy[:,:,2:]), dim=-1))
-    input_loss = 1e-4 * th.sum(th.square(policy.gru.weight_ih_l0))
-    recurrent_loss = 1e-4 * th.sum(th.square(policy.gru.weight_hh_l0))
+    #velocity_loss = 0.1 * th.mean(th.sum(th.abs(xy[:,:,2:]), dim=-1))
+    #input_loss = 1e-4 * th.sum(th.square(policy.gru.weight_ih_l0))
+    #recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
+    action_loss = 1e-5 * th.sum(th.abs(all_actions))
 
-    loss = cartesian_loss + muscle_loss + velocity_loss + input_loss + recurrent_loss 
+    #loss = cartesian_loss + muscle_loss + velocity_loss + input_loss + recurrent_loss
+    loss = cartesian_loss + action_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -169,12 +171,12 @@ if __name__ == "__main__":
     ff_coefficient = float(sys.argv[1])
     phase = int(sys.argv[2])
     directory_name = sys.argv[3]
-    #train(model_num=model_num,ff_coefficient=ff_coefficient)
+    train(model_num,ff_coefficient,phase,directory_name)
 
-    iter_list = range(16)
-    n_jobs = 16
-    while len(iter_list) > 0:
-        these_iters = iter_list[0:n_jobs]
-        iter_list = iter_list[n_jobs:]
-        result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,directory_name=directory_name) for iteration in these_iters)
+    # iter_list = range(16)
+    # n_jobs = 16
+    # while len(iter_list) > 0:
+    #     these_iters = iter_list[0:n_jobs]
+    #     iter_list = iter_list[n_jobs:]
+    #     result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,directory_name=directory_name) for iteration in these_iters)
 
