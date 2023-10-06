@@ -188,14 +188,14 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10)):
 
     return fig
 
-def plot_prelearning(data_dir,num_model=16,w=1000,figsize=(6,10)):
+def plot_prelearning(data_dir,num_model=16,phase=0,w=1000,figsize=(6,10)):
     position_loss_NF1 = []
 
     # Loop through each model
     for m in range(num_model):
 
         model_name = "model{:02d}".format(m)
-        log_file1 = list(Path(data_dir).glob(f'{model_name}_phase={1}_*_log.json'))[0]
+        log_file1 = list(Path(data_dir).glob(f'{model_name}_phase={phase}_*_log.json'))[0]
 
         position_loss_NF1_ = json.load(open(log_file1,'r'))
         

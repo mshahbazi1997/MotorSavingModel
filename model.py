@@ -15,7 +15,7 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
   model_name = "model{:02d}".format(model_num)
   device = th.device("cpu")
 
-  if phase>1:
+  if phase>=1:
     # load config and weights from the previous phase
     weight_file = list(Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_weights'))[0]
     cfg_file = list(Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_cfg.json'))[0]
