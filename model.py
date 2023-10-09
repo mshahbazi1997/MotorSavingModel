@@ -38,10 +38,12 @@ def train(model_num,ff_coefficient,phase,condition="pretrain",directory_name=Non
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001)
     batch_size = 65
     n_batch = 50000
+    catch_trial_perc = 50
   else: # for training use biologily plausible optimizer
     optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
     batch_size = 64
     n_batch = 5000
+    catch_trial_perc = 0
 
   # Define Loss function
   def l1(x, y):
@@ -58,7 +60,7 @@ def train(model_num,ff_coefficient,phase,condition="pretrain",directory_name=Non
     # check if you want to load a model TODO
     h = policy.init_hidden(batch_size=batch_size)
 
-    obs, info = env.reset(condition = condition,ff_coefficient=ff_coefficient, options={'batch_size':batch_size})
+    obs, info = env.reset(condition = condition,catch_trial_perc=catch_trial_perc,ff_coefficient=ff_coefficient, options={'batch_size':batch_size})
     terminated = False
 
     # initial positions and targets

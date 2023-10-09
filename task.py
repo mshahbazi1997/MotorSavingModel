@@ -17,7 +17,7 @@ class CentreOutFF(mn.environment.Environment):
   def reset(self, *, 
             seed: int | None = None, 
             ff_coefficient: float = 0., 
-            condition: str = "train",
+            condition: str = "pretrain",
             catch_trial_perc: float = 50,
             go_cue_range: Union[list, tuple, np.ndarray] = (0.1, 0.3),
             options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
