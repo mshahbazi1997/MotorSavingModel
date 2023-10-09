@@ -33,7 +33,7 @@ class CentreOutFF(mn.environment.Environment):
     self.ff_coefficient = ff_coefficient
     self.go_cue_range = go_cue_range # in seconds
     
-    if (condition=="train"): # train net to reach to random targets
+    if (condition=="pretrain"): # train net to reach to random targets
 
       joint_state = None
 

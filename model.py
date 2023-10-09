@@ -10,7 +10,7 @@ import json
 from joblib import Parallel, delayed
 from pathlib import Path
 
-def train(model_num,ff_coefficient,phase,directory_name=None):
+def train(model_num,ff_coefficient,phase,condition="pretrain",directory_name=None):
   output_folder = create_directory(directory_name=directory_name)
   model_name = "model{:02d}".format(model_num)
   device = th.device("cpu")
@@ -34,7 +34,14 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     env = load_env(CentreOutFF)    
     policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
   
-  optimizer = th.optim.Adam(policy.parameters(), lr=0.001) # 10**-3
+  if condition=="pretrain": 
+    optimizer = th.optim.Adam(policy.parameters(), lr=0.001)
+    batch_size = 65
+    n_batch = 50000
+  else: # for training use biologily plausible optimizer
+    optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
+    batch_size = 64
+    n_batch = 5000
 
   # Define Loss function
   def l1(x, y):
@@ -42,8 +49,6 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     return th.mean(th.sum(th.abs(x - y), dim=-1))
 
   # Train network
-  batch_size = 65
-  n_batch = 50000
   losses = []
   position_loss = []
   interval = 1000
@@ -53,7 +58,7 @@ def train(model_num,ff_coefficient,phase,directory_name=None):
     # check if you want to load a model TODO
     h = policy.init_hidden(batch_size=batch_size)
 
-    obs, info = env.reset(condition = "train",ff_coefficient=ff_coefficient, options={'batch_size':batch_size})
+    obs, info = env.reset(condition = condition,ff_coefficient=ff_coefficient, options={'batch_size':batch_size})
     terminated = False
 
     # initial positions and targets
@@ -174,12 +179,13 @@ if __name__ == "__main__":
 
     ff_coefficient = float(sys.argv[1])
     phase = int(sys.argv[2])
-    directory_name = sys.argv[3]
+    condition = sys.argv[3]
+    directory_name = sys.argv[4]
 
     iter_list = range(16)
     n_jobs = 16
     while len(iter_list) > 0:
         these_iters = iter_list[0:n_jobs]
         iter_list = iter_list[n_jobs:]
-        result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,directory_name=directory_name) for iteration in these_iters)
+        result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase, condition=condition, directory_name=directory_name) for iteration in these_iters)
 

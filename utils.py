@@ -218,4 +218,4 @@ def plot_prelearning(data_dir,num_model=16,phase=0,w=1000,figsize=(6,10)):
     ax.fill_between(x1w, NF1_mean - NF1_std, NF1_mean + NF1_std, color='gray', alpha=0.5)
     ax.legend()
 
-    return fig
+    return fig, ax 
