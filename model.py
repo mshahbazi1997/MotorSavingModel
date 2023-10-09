@@ -42,7 +42,7 @@ def train(model_num,ff_coefficient,phase,condition="pretrain",directory_name=Non
   else: # for training use biologily plausible optimizer
     optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
     batch_size = 64
-    n_batch = 5000
+    n_batch = 10000
     catch_trial_perc = 0
 
   # Define Loss function
