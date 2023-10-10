@@ -116,7 +116,7 @@ def load_env(task,cfg=None):
     return env
 
 
-def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10)):
+def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),init_phase=1):
     position_loss_NF1 = []
     position_loss_FF1 = []
     position_loss_NF2 = []
@@ -128,10 +128,10 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10)):
         model_name = "model{:02d}".format(m)
 
 
-        log_file1 = list(Path(data_dir).glob(f'{model_name}_phase={2}_*_log.json'))[0]
-        log_file2 = list(Path(data_dir).glob(f'{model_name}_phase={3}_*_log.json'))[0]
-        log_file3 = list(Path(data_dir).glob(f'{model_name}_phase={4}_*_log.json'))[0]
-        log_file4 = list(Path(data_dir).glob(f'{model_name}_phase={5}_*_log.json'))[0]
+        log_file1 = list(Path(data_dir).glob(f'{model_name}_phase={init_phase}_*_log.json'))[0]
+        log_file2 = list(Path(data_dir).glob(f'{model_name}_phase={init_phase+1}_*_log.json'))[0]
+        log_file3 = list(Path(data_dir).glob(f'{model_name}_phase={init_phase+2}_*_log.json'))[0]
+        log_file4 = list(Path(data_dir).glob(f'{model_name}_phase={init_phase+3}_*_log.json'))[0]
         
         position_loss_NF1_ = json.load(open(log_file1,'r'))
         position_loss_FF1_ = json.load(open(log_file2,'r'))

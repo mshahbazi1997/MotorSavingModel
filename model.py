@@ -186,7 +186,28 @@ if __name__ == "__main__":
 
     if trainall:
       directory_name = sys.argv[2]
-      1==1
+
+      iter_list = range(16)
+      n_jobs = 16
+      while len(iter_list) > 0:
+          these_iters = iter_list[0:n_jobs]
+          iter_list = iter_list[n_jobs:]
+          # pretraining the network using ADAM
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,0,n_batch=50000,condition='pretrain',directory_name=directory_name) 
+                                                     for iteration in these_iters)
+          # NF1
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,1,n_batch=20000,condition='test',directory_name=directory_name) 
+                                                     for iteration in these_iters)
+          # FF1
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,10,2,n_batch=20000,condition='test',directory_name=directory_name) 
+                                                     for iteration in these_iters)
+          # NF2
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,3,n_batch=20000,condition='test',directory_name=directory_name) 
+                                                     for iteration in these_iters)
+          # FF2
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,10,4,n_batch=20000,condition='test',directory_name=directory_name) 
+                                                     for iteration in these_iters)
+          
     else: ## training networks for each phase separately
       ff_coefficient = float(sys.argv[2])
       phase = int(sys.argv[3])
@@ -199,5 +220,6 @@ if __name__ == "__main__":
       while len(iter_list) > 0:
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase, condition=condition, directory_name=directory_name) for iteration in these_iters)
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,condition=condition,directory_name=directory_name) 
+                                                     for iteration in these_iters)
 
