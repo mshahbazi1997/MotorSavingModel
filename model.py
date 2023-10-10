@@ -10,7 +10,7 @@ import json
 from joblib import Parallel, delayed
 from pathlib import Path
 
-def train(model_num,ff_coefficient,phase,condition="pretrain",directory_name=None):
+def train(model_num,ff_coefficient,phase,n_batch=None,condition="pretrain",directory_name=None):
   output_folder = create_directory(directory_name=directory_name)
   model_name = "model{:02d}".format(model_num)
   device = th.device("cpu")
@@ -37,13 +37,16 @@ def train(model_num,ff_coefficient,phase,condition="pretrain",directory_name=Non
   if condition=="pretrain": 
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001)
     batch_size = 65
-    n_batch = 50000
     catch_trial_perc = 50
+    if n_batch is None:
+      n_batch = 50000
+
   else: # for training use biologily plausible optimizer
     optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
     batch_size = 64
-    n_batch = 10000
     catch_trial_perc = 0
+    if n_batch is None:
+      n_batch = 20000
 
   # Define Loss function
   def l1(x, y):
@@ -60,7 +63,7 @@ def train(model_num,ff_coefficient,phase,condition="pretrain",directory_name=Non
     # check if you want to load a model TODO
     h = policy.init_hidden(batch_size=batch_size)
 
-    obs, info = env.reset(condition = condition,catch_trial_perc=catch_trial_perc,ff_coefficient=ff_coefficient, options={'batch_size':batch_size})
+    obs, info = env.reset(condition=condition,catch_trial_perc=catch_trial_perc,ff_coefficient=ff_coefficient, options={'batch_size':batch_size})
     terminated = False
 
     # initial positions and targets
@@ -172,22 +175,29 @@ def test(cfg_file,weight_file,ff_coefficient=None):
 
 
 if __name__ == "__main__":
+    ## training single network - use for debugging
     # model_num = int(sys.argv[1])
     # ff_coefficient = float(sys.argv[2])
     # phase = int(sys.argv[3])
     # directory_name = sys.argv[4]
     # train(model_num,ff_coefficient,phase,directory_name)
 
+    trainall = int(sys.argv[1])
 
-    ff_coefficient = float(sys.argv[1])
-    phase = int(sys.argv[2])
-    condition = sys.argv[3]
-    directory_name = sys.argv[4]
+    if trainall:
+      directory_name = sys.argv[2]
+      1==1
+    else: ## training networks for each phase separately
+      ff_coefficient = float(sys.argv[2])
+      phase = int(sys.argv[3])
+      n_batch = int(sys.argv[4])
+      condition = sys.argv[5]
+      directory_name = sys.argv[6]
 
-    iter_list = range(16)
-    n_jobs = 16
-    while len(iter_list) > 0:
-        these_iters = iter_list[0:n_jobs]
-        iter_list = iter_list[n_jobs:]
-        result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase, condition=condition, directory_name=directory_name) for iteration in these_iters)
+      iter_list = range(16)
+      n_jobs = 16
+      while len(iter_list) > 0:
+          these_iters = iter_list[0:n_jobs]
+          iter_list = iter_list[n_jobs:]
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase, condition=condition, directory_name=directory_name) for iteration in these_iters)
 

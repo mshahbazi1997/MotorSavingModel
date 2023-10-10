@@ -128,10 +128,10 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10)):
         model_name = "model{:02d}".format(m)
 
 
-        log_file1 = list(Path(data_dir).glob(f'{model_name}_phase={3}_*_log.json'))[0]
-        log_file2 = list(Path(data_dir).glob(f'{model_name}_phase={4}_*_log.json'))[0]
-        log_file3 = list(Path(data_dir).glob(f'{model_name}_phase={5}_*_log.json'))[0]
-        log_file4 = list(Path(data_dir).glob(f'{model_name}_phase={6}_*_log.json'))[0]
+        log_file1 = list(Path(data_dir).glob(f'{model_name}_phase={2}_*_log.json'))[0]
+        log_file2 = list(Path(data_dir).glob(f'{model_name}_phase={3}_*_log.json'))[0]
+        log_file3 = list(Path(data_dir).glob(f'{model_name}_phase={4}_*_log.json'))[0]
+        log_file4 = list(Path(data_dir).glob(f'{model_name}_phase={5}_*_log.json'))[0]
         
         position_loss_NF1_ = json.load(open(log_file1,'r'))
         position_loss_FF1_ = json.load(open(log_file2,'r'))
@@ -139,10 +139,10 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10)):
         position_loss_FF3_ = json.load(open(log_file4,'r'))
         
         # Append data for each model
-        position_loss_NF1.append(position_loss_NF1_)
-        position_loss_FF1.append(position_loss_FF1_)
-        position_loss_NF2.append(position_loss_NF2_)
-        position_loss_FF2.append(position_loss_FF3_)
+        position_loss_NF1.append(position_loss_NF1_['position_loss'])
+        position_loss_FF1.append(position_loss_FF1_['position_loss'])
+        position_loss_NF2.append(position_loss_NF2_['position_loss'])
+        position_loss_FF2.append(position_loss_FF3_['position_loss'])
 
 
     # Calculate window averages for all models
@@ -186,7 +186,7 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10)):
     ax[1].legend()
 
 
-    return fig
+    return fig, ax
 
 def plot_prelearning(data_dir,num_model=16,phase=0,w=1000,figsize=(6,10)):
     position_loss_NF1 = []
