@@ -10,11 +10,12 @@ import json
 from joblib import Parallel, delayed
 from pathlib import Path
 
-def train(model_num,ff_coefficient,phase,n_batch=None,condition="pretrain",directory_name=None):
+def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   output_folder = create_directory(directory_name=directory_name)
   model_name = "model{:02d}".format(model_num)
   device = th.device("cpu")
 
+  # Set configuaration and network
   if phase>=1:
     # load config and weights from the previous phase
     weight_file = list(Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_weights'))[0]
@@ -34,19 +35,18 @@ def train(model_num,ff_coefficient,phase,n_batch=None,condition="pretrain",direc
     env = load_env(CentreOutFF)    
     policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
   
-  if condition=="pretrain": 
+  
+  if condition=='growing_up': 
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001)
-    batch_size = 65
+    batch_size = 128
     catch_trial_perc = 50
-    if n_batch is None:
-      n_batch = 50000
+    n_batch = 10000
 
   else: # for training use biologily plausible optimizer
     optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
-    batch_size = 64
-    catch_trial_perc = 0
-    if n_batch is None:
-      n_batch = 20000
+    batch_size = 1024
+    catch_trial_perc = 50
+    n_batch = 3000
 
   # Define Loss function
   def l1(x, y):
@@ -55,45 +55,52 @@ def train(model_num,ff_coefficient,phase,n_batch=None,condition="pretrain",direc
 
   # Train network
   losses = []
-  position_loss = []
+  position_losses = []
   interval = 1000
 
   for batch in range(n_batch):
 
-    # check if you want to load a model TODO
+    # Run episode
     h = policy.init_hidden(batch_size=batch_size)
 
-    obs, info = env.reset(condition=condition,catch_trial_perc=catch_trial_perc,ff_coefficient=ff_coefficient, options={'batch_size':batch_size})
+    obs, info = env.reset(condition='train',catch_trial_perc=catch_trial_perc,ff_coefficient=ff_coefficient, options={'batch_size':batch_size})
     terminated = False
 
     # initial positions and targets
-    xy = [info['states']['cartesian'][:, None, :]]
-    tg = [info["goal"][:, None, :]]
+    xy = []
+    tg = []
     all_actions = []
     all_hidden = []
+    all_muscle = []
 
     # simulate whole episode
     while not terminated:  # will run until `max_ep_duration` is reached
       action, h = policy(obs,h)
-      obs, reward, terminated, truncated, info = env.step(action=action)
+      obs, _, terminated, _, info = env.step(action=action)
 
       xy.append(info['states']['cartesian'][:, None, :])  # trajectories
       tg.append(info["goal"][:, None, :])  # targets
       all_actions.append(action[:, None, :])
       all_hidden.append(h[0,:,None,:])
+      all_muscle.append(info['states']['muscle'][:,0,None,:])
 
     # concatenate into a (batch_size, n_timesteps, xy) tensor
     xy = th.cat(xy, axis=1)
     tg = th.cat(tg, axis=1)
     all_hidden = th.cat(all_hidden, axis=1)
     all_actions = th.cat(all_actions, axis=1)
+    all_muscle = th.cat(all_muscle, axis=1)
+    
 
     # calculate losses
-    cartesian_loss = l1(xy[:,:,0:2], tg)
+    position_loss = 2*l1(xy[:,:,0:2], tg)
     action_loss = 1e-5 * th.sum(th.square(all_actions))
-    hidden_loss = 1e-6 * th.sum(th.square(all_hidden))
+    hidden_loss = 0.1 * th.sum(th.square(all_hidden))
+    muscle_loss = 5 * th.mean(th.sum(th.square(all_muscle), dim=-1))
+    input_loss = 1e-6 * th.sum(th.square(policy.gru.weight_ih_l0))
+    recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
 
-    loss = cartesian_loss + action_loss + hidden_loss 
+    loss = position_loss + muscle_loss + hidden_loss + recurrent_loss + input_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -101,29 +108,51 @@ def train(model_num,ff_coefficient,phase,n_batch=None,condition="pretrain",direc
     th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)  # important!
     optimizer.step()
     losses.append(loss.item())
-    position_loss.append(cartesian_loss.item())
+
+    # test the network
+    # Run episode
+    h = policy.init_hidden(batch_size=8)
+    obs, info = env.reset(condition='test',catch_trial_perc=0,ff_coefficient=ff_coefficient,options={'batch_size':8})
+    terminated = False
+
+    # initial positions and targets
+    xy = []
+    tg = []
+    # simulate whole episode
+    while not terminated:  # will run until `max_ep_duration` is reached
+      action, h = policy(obs,h)
+      obs, _, terminated, _, info = env.step(action=action)
+
+      xy.append(info['states']['cartesian'][:, None, :])  # trajectories
+      tg.append(info["goal"][:, None, :])  # targets
+
+    # concatenate into a (batch_size, n_timesteps, xy) tensor
+    xy = th.cat(xy, axis=1)
+    tg = th.cat(tg, axis=1)
+
+    position_loss = l1(xy[:,:,0:2],tg)
+    position_losses.append(position_loss.item())
 
     if (batch % interval == 0) and (batch != 0):
-      print("Batch {}/{} Done, mean policy loss: {}".format(batch, n_batch, sum(losses[-interval:])/interval))
+      print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(position_losses[-interval:])/interval))
 
   # Save model
   weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
   log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_log.json")
   cfg_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_cfg.json")
 
-
   # save model weights
   th.save(policy.state_dict(), weight_file)
 
   # save training history (log)
   with open(log_file, 'w') as file:
-    #json.dump(losses, file)
-    json.dump({'losses':losses,'position_loss':position_loss}, file)
+    json.dump(position_losses, file)
+    #json.dump({'losses':losses}, file)
 
   # save environment configuration dictionary
   cfg = env.get_save_config()
   with open(cfg_file, 'w') as file:
-    json.dump(cfg, file)
+    json.dump(cfg,file)
 
   print("done.")
 
@@ -145,7 +174,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   
   batch_size = 8
   # initialize batch
-  obs, info = env.reset(condition ="test",catch_trial_perc=0,options={'batch_size':batch_size},ff_coefficient=ff_coefficient)
+  obs, info = env.reset(condition ='test',catch_trial_perc=0,options={'batch_size':batch_size},ff_coefficient=ff_coefficient)
 
   h = policy.init_hidden(batch_size=batch_size)
   terminated = False
@@ -175,6 +204,9 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   return xy, tg, all_hidden, all_actions
 
 
+
+
+
 if __name__ == "__main__":
     ## training single network - use for debugging
     # model_num = int(sys.argv[1])
@@ -194,33 +226,32 @@ if __name__ == "__main__":
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
           # pretraining the network using ADAM
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,0,n_batch=50000,condition='pretrain',directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,0,condition='growing_up',directory_name=directory_name) 
                                                      for iteration in these_iters)
           # NF1
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,1,n_batch=20000,condition='test',directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,1,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF1
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,10,2,n_batch=20000,condition='test',directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,10,2,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)
           # NF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,3,n_batch=20000,condition='test',directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,3,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,10,4,n_batch=20000,condition='test',directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,10,4,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)
           
     else: ## training networks for each phase separately
       ff_coefficient = int(sys.argv[2])
       phase = int(sys.argv[3])
-      n_batch = int(sys.argv[4])
-      condition = sys.argv[5]
-      directory_name = sys.argv[6]
+      condition = sys.argv[4]
+      directory_name = sys.argv[5]
 
       iter_list = range(16)
       n_jobs = 16
       while len(iter_list) > 0:
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,condition=condition,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,condition=condition,directory_name=directory_name) 
                                                      for iteration in these_iters)
 

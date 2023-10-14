@@ -17,7 +17,7 @@ class CentreOutFF(mn.environment.Environment):
   def reset(self, *, 
             seed: int | None = None, 
             ff_coefficient: float = 0., 
-            condition: str = "pretrain",
+            condition: str = 'train',
             catch_trial_perc: float = 50,
             go_cue_range: Union[list, tuple, np.ndarray] = (0.1, 0.3),
             options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
@@ -33,7 +33,7 @@ class CentreOutFF(mn.environment.Environment):
     self.ff_coefficient = ff_coefficient
     self.go_cue_range = go_cue_range # in seconds
     
-    if (condition=="pretrain"): # train net to reach to random targets
+    if (condition=='train'): # train net to reach to random targets
 
       joint_state = None
 
@@ -44,7 +44,7 @@ class CentreOutFF(mn.environment.Environment):
       go_cue_time = np.random.uniform(self.go_cue_range[0],self.go_cue_range[1],batch_size)
       self.go_cue_time = go_cue_time
 
-    elif (condition=="test"): # centre-out reaches to each target
+    elif (condition=='test'): # centre-out reaches to each target
 
       angle_set = np.deg2rad(np.arange(0,360,45)) # 8 directions
       reps        = int(np.ceil(batch_size / len(angle_set)))
