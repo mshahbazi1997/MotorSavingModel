@@ -70,7 +70,6 @@ def train(model_num,ff_coefficient,phase,n_batch=None,condition="pretrain",direc
     xy = [info['states']['cartesian'][:, None, :]]
     tg = [info["goal"][:, None, :]]
     all_actions = []
-    all_muscle = []
     all_hidden = []
 
     # simulate whole episode
@@ -81,7 +80,6 @@ def train(model_num,ff_coefficient,phase,n_batch=None,condition="pretrain",direc
       xy.append(info['states']['cartesian'][:, None, :])  # trajectories
       tg.append(info["goal"][:, None, :])  # targets
       all_actions.append(action[:, None, :])
-      all_muscle.append(info['states']['muscle'][:,0,None,:])
       all_hidden.append(h[0,:,None,:])
 
     # concatenate into a (batch_size, n_timesteps, xy) tensor
@@ -89,16 +87,13 @@ def train(model_num,ff_coefficient,phase,n_batch=None,condition="pretrain",direc
     tg = th.cat(tg, axis=1)
     all_hidden = th.cat(all_hidden, axis=1)
     all_actions = th.cat(all_actions, axis=1)
-    all_muscle = th.cat(all_muscle, axis=1)
 
     # calculate losses
     cartesian_loss = l1(xy[:,:,0:2], tg)
-    action_loss = 1e-5 * th.sum(th.abs(all_actions))
-    hidden_loss = 1e-6 * th.sum(th.abs(all_hidden))
-    hidden_diff_loss = 1e-7 * th.sum(th.abs(th.diff(all_hidden, dim=1)))
-    #muscle_loss = 0.1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
+    action_loss = 1e-5 * th.sum(th.square(all_actions))
+    hidden_loss = 1e-6 * th.sum(th.square(all_hidden))
 
-    loss = cartesian_loss + action_loss + hidden_loss + hidden_diff_loss
+    loss = cartesian_loss + action_loss + hidden_loss 
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -147,7 +142,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   env = load_env(CentreOutFF, cfg)
   policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
   policy.load_state_dict(th.load(weight_file))
-
+  
   batch_size = 8
   # initialize batch
   obs, info = env.reset(condition ="test",catch_trial_perc=0,options={'batch_size':batch_size},ff_coefficient=ff_coefficient)
@@ -158,6 +153,8 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   # initial positions and targets
   xy = [info["states"]["fingertip"][:, None, :]]
   tg = [info["goal"][:, None, :]]
+  all_actions = []
+  all_hidden = []
 
   # simulate whole episode
   while not terminated:  # will run until `max_ep_duration` is reached
@@ -166,12 +163,16 @@ def test(cfg_file,weight_file,ff_coefficient=None):
     obs, reward, terminated, truncated, info = env.step(action=action)  
     xy.append(info["states"]["fingertip"][:,None,:])  # trajectories
     tg.append(info["goal"][:,None,:])  # targets
+    all_actions.append(action[:, None, :])
+    all_hidden.append(h[0,:,None,:])
 
   # concatenate into a (batch_size, n_timesteps, xy) tensor
   xy = th.detach(th.cat(xy, axis=1))
   tg = th.detach(th.cat(tg, axis=1))
+  all_hidden = th.detach(th.cat(all_hidden, axis=1))
+  all_actions = th.detach(th.cat(all_actions, axis=1))
 
-  return xy, tg
+  return xy, tg, all_hidden, all_actions
 
 
 if __name__ == "__main__":
@@ -209,7 +210,7 @@ if __name__ == "__main__":
                                                      for iteration in these_iters)
           
     else: ## training networks for each phase separately
-      ff_coefficient = float(sys.argv[2])
+      ff_coefficient = int(sys.argv[2])
       phase = int(sys.argv[3])
       n_batch = int(sys.argv[4])
       condition = sys.argv[5]
