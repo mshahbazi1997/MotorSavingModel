@@ -93,14 +93,17 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     
 
     # calculate losses
-    position_loss = 2*l1(xy[:,:,0:2], tg)
-    action_loss = 1e-5 * th.sum(th.square(all_actions))
-    hidden_loss = 0.1 * th.sum(th.square(all_hidden))
-    muscle_loss = 5 * th.mean(th.sum(th.square(all_muscle), dim=-1))
+    position_loss = l1(xy[:,:,0:2], tg)
+    action_loss = 1e-5 * th.mean(th.sum(th.square(all_actions), dim=-1))
+    hidden_loss = 1e-6 * th.mean(th.sum(th.square(all_hidden), dim=-1))
+    muscle_loss = 0.1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
+
     input_loss = 1e-6 * th.sum(th.square(policy.gru.weight_ih_l0))
     recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
 
-    loss = position_loss + muscle_loss + hidden_loss + recurrent_loss + input_loss
+    # hidden_loss
+
+    loss = position_loss + muscle_loss + recurrent_loss + input_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -166,7 +169,6 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   if ff_coefficient is None:
     ff_coefficient=cfg['ff_coefficient']
     
-
   # environment and network
   env = load_env(CentreOutFF, cfg)
   policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
