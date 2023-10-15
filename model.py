@@ -40,7 +40,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001)
     batch_size = 128
     catch_trial_perc = 50
-    n_batch = 10000
+    n_batch = 5000
 
   else: # for training use biologily plausible optimizer
     optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
@@ -96,14 +96,15 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     position_loss = l1(xy[:,:,0:2], tg)
     action_loss = 1e-5 * th.mean(th.sum(th.square(all_actions), dim=-1))
     hidden_loss = 1e-6 * th.mean(th.sum(th.square(all_hidden), dim=-1))
-    muscle_loss = 0.1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
+    muscle_loss = 1e-3 * th.mean(th.sum(th.square(all_muscle), dim=-1))
 
     input_loss = 1e-6 * th.sum(th.square(policy.gru.weight_ih_l0))
-    recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
+    recurrent_loss = 1e-4 * th.sum(th.square(policy.gru.weight_hh_l0))
 
     # hidden_loss
 
-    loss = position_loss + muscle_loss + recurrent_loss + input_loss
+    #loss = position_loss + muscle_loss + recurrent_loss + input_loss
+    loss = position_loss + action_loss + hidden_loss + recurrent_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
