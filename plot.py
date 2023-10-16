@@ -139,13 +139,13 @@ def plot_prelearning(data_dir,num_model=16,phase=0,w=1000,figsize=(6,10)):
 
     return fig, ax 
 
-def plot_activation(all_hidden, all_actions):
+def plot_activation(all_hidden, all_muscles):
     fg, ax = plt.subplots(nrows=8,ncols=2,figsize=(10,20))
 
     x = np.linspace(0, 1, 100)
 
     for i in range(8):
-        ax[i,0].plot(x,np.array(all_actions[i,:,:]))
+        ax[i,0].plot(x,np.array(all_muscles[i,:,:]))
         ax[i,1].plot(x,np.array(all_hidden[i,:,:]))
         
         ax[i,0].set_ylabel('muscle act (au)')

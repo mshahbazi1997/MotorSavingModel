@@ -32,7 +32,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
   else:
     # environment and network
-    env = load_env(CentreOutFF)    
+    env = load_env(CentreOutFF)
     policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
   
   
@@ -90,21 +90,30 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     all_hidden = th.cat(all_hidden, axis=1)
     all_actions = th.cat(all_actions, axis=1)
     all_muscle = th.cat(all_muscle, axis=1)
-    
 
     # calculate losses
-    position_loss = l1(xy[:,:,0:2], tg)
-    #action_loss = 1e-5 * th.mean(th.sum(th.square(all_actions), dim=-1))
-    hidden_loss = 1e-6 * th.mean(th.sum(th.square(all_hidden), dim=-1))
-    muscle_loss = 1e-1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
-
+    # input_loss
     input_loss = 1e-6 * th.sum(th.square(policy.gru.weight_ih_l0))
-    recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
+    # muscle_loss
+    max_iso_force = env.muscle.max_iso_force
+    max_iso_force_n = max_iso_force / th.mean(max_iso_force)
+    activation_scaled = all_muscle * max_iso_force_n
+    muscle_loss = 5*th.mean(th.square(activation_scaled))
+    # hidden_loss
+    d_hidden = th.mean(th.square(th.diff(all_hidden, axis=1)/env.dt))
+    hidden_loss = 0.1*(th.mean(th.square(all_hidden))+0.05*d_hidden)
+    position_loss = 2*l1(xy[:,:,0:2], tg)
+    #action_loss = 1e-5 * th.mean(th.sum(th.square(all_actions), dim=-1))
+    #hidden_loss = 1e-6 * th.mean(th.sum(th.square(all_hidden), dim=-1))
+    #muscle_loss = 1e-1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
+
+    loss = input_loss + muscle_loss + hidden_loss + position_loss
+    #recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
 
     # hidden_loss
 
     #loss = position_loss + muscle_loss + recurrent_loss + input_loss
-    loss = position_loss + muscle_loss + hidden_loss + recurrent_loss
+    #loss = position_loss + muscle_loss + hidden_loss + recurrent_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -186,6 +195,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   xy = [info["states"]["fingertip"][:, None, :]]
   tg = [info["goal"][:, None, :]]
   all_actions = []
+  all_muscles = []
   all_hidden = []
 
   # simulate whole episode
@@ -196,6 +206,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
     xy.append(info["states"]["fingertip"][:,None,:])  # trajectories
     tg.append(info["goal"][:,None,:])  # targets
     all_actions.append(action[:, None, :])
+    all_muscles.append(info['states']['muscle'][:,0,None,:])
     all_hidden.append(h[0,:,None,:])
 
   # concatenate into a (batch_size, n_timesteps, xy) tensor
@@ -203,8 +214,9 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   tg = th.detach(th.cat(tg, axis=1))
   all_hidden = th.detach(th.cat(all_hidden, axis=1))
   all_actions = th.detach(th.cat(all_actions, axis=1))
+  all_muscles = th.detach(th.cat(all_muscles, axis=1))
 
-  return xy, tg, all_hidden, all_actions
+  return xy, tg, all_hidden, all_muscles
 
 
 
