@@ -94,7 +94,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
     # calculate losses
     position_loss = l1(xy[:,:,0:2], tg)
-    action_loss = 1e-4 * th.mean(th.sum(th.square(all_actions), dim=-1))
+    action_loss = 1e-5 * th.mean(th.sum(th.square(all_actions), dim=-1))
     hidden_loss = 1e-6 * th.mean(th.sum(th.square(all_hidden), dim=-1))
     muscle_loss = 1e-3 * th.mean(th.sum(th.square(all_muscle), dim=-1))
 
