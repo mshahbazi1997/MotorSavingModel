@@ -94,17 +94,17 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
     # calculate losses
     position_loss = l1(xy[:,:,0:2], tg)
-    action_loss = 1e-5 * th.mean(th.sum(th.square(all_actions), dim=-1))
+    #action_loss = 1e-5 * th.mean(th.sum(th.square(all_actions), dim=-1))
     hidden_loss = 1e-6 * th.mean(th.sum(th.square(all_hidden), dim=-1))
-    muscle_loss = 1e-3 * th.mean(th.sum(th.square(all_muscle), dim=-1))
+    muscle_loss = 1e-1 * th.mean(th.sum(th.square(all_muscle), dim=-1))
 
     input_loss = 1e-6 * th.sum(th.square(policy.gru.weight_ih_l0))
-    recurrent_loss = 1e-4 * th.sum(th.square(policy.gru.weight_hh_l0))
+    recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
 
     # hidden_loss
 
     #loss = position_loss + muscle_loss + recurrent_loss + input_loss
-    loss = position_loss + action_loss + hidden_loss + recurrent_loss
+    loss = position_loss + muscle_loss + hidden_loss + recurrent_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -252,9 +252,11 @@ if __name__ == "__main__":
 
       iter_list = range(16)
       n_jobs = 16
-      while len(iter_list) > 0:
-          these_iters = iter_list[0:n_jobs]
-          iter_list = iter_list[n_jobs:]
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,condition=condition,directory_name=directory_name) 
-                                                     for iteration in these_iters)
+
+      train(1,ff_coefficient,phase,condition=condition,directory_name=directory_name)
+      #while len(iter_list) > 0:
+      #    these_iters = iter_list[0:n_jobs]
+      #    iter_list = iter_list[n_jobs:]
+      #    result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,condition=condition,directory_name=directory_name) 
+      #                                               for iteration in these_iters)
 
