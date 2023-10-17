@@ -11,7 +11,7 @@ class Policy(th.nn.Module):
         self.gru = th.nn.GRU(input_dim, hidden_dim, 1, batch_first=True)
         self.fc = th.nn.Linear(hidden_dim, output_dim)
         self.sigmoid = th.nn.Sigmoid()
-        self.h0 = th.nn.Parameter(th.zeros(self.n_layers, 1, hidden_dim), requires_grad=True)
+        
 
         # the default initialization in torch isn't ideal
         for name, param in self.named_parameters():
@@ -29,6 +29,7 @@ class Policy(th.nn.Module):
                 th.nn.init.constant_(param, -5.)
             else:
                 raise ValueError
+        self.h0 = th.nn.Parameter(th.zeros(self.n_layers, 1, hidden_dim), requires_grad=True)
         
         self.to(device)
 
