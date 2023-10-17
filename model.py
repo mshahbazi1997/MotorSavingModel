@@ -98,15 +98,15 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     max_iso_force = env.muscle.max_iso_force
     max_iso_force_n = max_iso_force / th.mean(max_iso_force)
     activation_scaled = all_muscle * max_iso_force_n
-    muscle_loss = 7.5*th.mean(th.square(activation_scaled))
+    muscle_loss = 5*th.mean(th.square(activation_scaled))
     # hidden_loss
     d_hidden = th.mean(th.square(th.diff(all_hidden, axis=1)/env.dt))
     hidden_loss = 0.1*(th.mean(th.square(all_hidden))+0.05*d_hidden)
     position_loss = 2*l1(xy[:,:,0:2], tg)
     # recurrent_loss
-    # recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
+    recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
 
-    loss = input_loss + muscle_loss + hidden_loss + position_loss #+ recurrent_loss
+    loss = input_loss + muscle_loss + hidden_loss + position_loss + recurrent_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
