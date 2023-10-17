@@ -106,7 +106,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     # recurrent_loss
     #recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
 
-    loss = input_loss + muscle_loss + hidden_loss + position_loss + recurrent_loss
+    loss = input_loss + muscle_loss + hidden_loss + position_loss #+ recurrent_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
