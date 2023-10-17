@@ -29,7 +29,7 @@ class Policy(th.nn.Module):
                 th.nn.init.constant_(param, -5.)
             else:
                 raise ValueError
-        self.h0 = th.nn.Parameter(th.zeros(self.n_layers, 1, hidden_dim), requires_grad=True)
+        #self.h0 = th.nn.Parameter(th.zeros(self.n_layers, 1, hidden_dim), requires_grad=True)
         
         self.to(device)
 
@@ -43,7 +43,7 @@ class Policy(th.nn.Module):
         return u, h
     
     def init_hidden(self, batch_size):
-        #weight = next(self.parameters()).data
-        #hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
-        hidden = self.h0.repeat(1,batch_size,1).to(self.device)
+        weight = next(self.parameters()).data
+        hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
+        #hidden = self.h0.repeat(1,batch_size,1).to(self.device)
         return hidden
