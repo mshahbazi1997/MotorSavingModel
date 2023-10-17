@@ -11,6 +11,7 @@ class Policy(th.nn.Module):
         self.gru = th.nn.GRU(input_dim, hidden_dim, 1, batch_first=True)
         self.fc = th.nn.Linear(hidden_dim, output_dim)
         self.sigmoid = th.nn.Sigmoid()
+        self.h0 = th.nn.Parameter(th.zeros(self.n_layers, 1, hidden_dim), requires_grad=True)
 
         # the default initialization in torch isn't ideal
         for name, param in self.named_parameters():
@@ -41,6 +42,7 @@ class Policy(th.nn.Module):
         return u, h
     
     def init_hidden(self, batch_size):
-        weight = next(self.parameters()).data
-        hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
+        #weight = next(self.parameters()).data
+        #hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
+        hidden = self.h0.repeat(1,batch_size,1).to(self.device)
         return hidden

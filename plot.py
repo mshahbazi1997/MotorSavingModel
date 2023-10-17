@@ -58,10 +58,10 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),init_phase=1):
         position_loss_FF3_ = json.load(open(log_file4,'r'))
         
         # Append data for each model
-        position_loss_NF1.append(position_loss_NF1_['position_loss'])
-        position_loss_FF1.append(position_loss_FF1_['position_loss'])
-        position_loss_NF2.append(position_loss_NF2_['position_loss'])
-        position_loss_FF2.append(position_loss_FF3_['position_loss'])
+        position_loss_NF1.append(position_loss_NF1_)
+        position_loss_FF1.append(position_loss_FF1_)
+        position_loss_NF2.append(position_loss_NF2_)
+        position_loss_FF2.append(position_loss_FF3_)
 
 
     # Calculate window averages for all models

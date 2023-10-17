@@ -76,12 +76,12 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     # simulate whole episode
     while not terminated:  # will run until `max_ep_duration` is reached
       action, h = policy(obs,h)
+      all_hidden.append(h[0,:,None,:])
       obs, _, terminated, _, info = env.step(action=action)
 
       xy.append(info['states']['cartesian'][:, None, :])  # trajectories
       tg.append(info["goal"][:, None, :])  # targets
       all_actions.append(action[:, None, :])
-      all_hidden.append(h[0,:,None,:])
       all_muscle.append(info['states']['muscle'][:,0,None,:])
 
     # concatenate into a (batch_size, n_timesteps, xy) tensor
@@ -193,6 +193,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
 
   # simulate whole episode
   while not terminated:  # will run until `max_ep_duration` is reached
+    all_hidden.append(h[0,:,None,:])
     action, h = policy(obs, h)
 
     obs, reward, terminated, truncated, info = env.step(action=action)  
@@ -200,7 +201,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
     tg.append(info["goal"][:,None,:])  # targets
     all_actions.append(action[:, None, :])
     all_muscles.append(info['states']['muscle'][:,0,None,:])
-    all_hidden.append(h[0,:,None,:])
+    
 
   # concatenate into a (batch_size, n_timesteps, xy) tensor
   xy = th.detach(th.cat(xy, axis=1))
@@ -258,10 +259,10 @@ if __name__ == "__main__":
       iter_list = range(16)
       n_jobs = 16
 
-      #train(1,ff_coefficient,phase,condition=condition,directory_name=directory_name)
-      while len(iter_list) > 0:
-          these_iters = iter_list[0:n_jobs]
-          iter_list = iter_list[n_jobs:]
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,condition=condition,directory_name=directory_name) 
-                                                     for iteration in these_iters)
+      train(1,ff_coefficient,phase,condition=condition,directory_name=directory_name)
+      #while len(iter_list) > 0:
+      #    these_iters = iter_list[0:n_jobs]
+      #    iter_list = iter_list[n_jobs:]
+      #    result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,condition=condition,directory_name=directory_name) 
+      #                                               for iteration in these_iters)
 
