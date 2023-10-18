@@ -51,10 +51,12 @@ class CentreOutFF(mn.environment.Environment):
       angle       = np.tile(angle_set, reps=reps)
       batch_size  = reps * len(angle_set)
 
-      reaching_distance = 0.1
+      reaching_distance = 0.10
       lb = np.array(self.effector.pos_lower_bound)
       ub = np.array(self.effector.pos_upper_bound)
       start_position = lb + (ub - lb) / 2
+      
+      start_position = np.array([1.047, 1.570])
       start_position = start_position.reshape(1,-1)
       start_jpv = th.from_numpy(np.concatenate([start_position, np.zeros_like(start_position)], axis=1)) # joint position and velocity
       start_cpv = self.joint2cartesian(start_jpv).numpy()

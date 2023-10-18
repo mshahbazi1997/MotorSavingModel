@@ -102,7 +102,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     # hidden_loss
     d_hidden = th.mean(th.square(th.diff(all_hidden, axis=1)/env.dt))
     hidden_loss = 0.1*(th.mean(th.square(all_hidden))+0.05*d_hidden)
-    position_loss = 2*l1(xy[:,:,0:2], tg) # 2
+    position_loss = 20*l1(xy[:,:,0:2], tg) # 2
     # recurrent_loss
     #recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
 
