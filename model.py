@@ -51,10 +51,11 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   # Define Loss function
   def l1(x, y, target_size=0.01):
     """L1 loss"""
-    mask = th.norm(x-y,dim=-1,p='fro')<target_size
-    loss_ = th.sum(th.abs(x-y), dim=-1)
-    loss_[mask] = 0
-    return th.mean(loss_)
+    #mask = th.norm(x-y,dim=-1,p='fro')<target_size
+    #loss_ = th.sum(th.abs(x-y), dim=-1)
+    #loss_[mask] = 0
+    #return th.mean(loss_)
+    return th.mean(th.sum(th.abs(x - y), dim=-1))
 
   # Train network
   overall_losses = []
@@ -100,22 +101,21 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
     # calculate losses
     # input_loss
-    input_loss = th.sum(th.square(policy.gru.weight_ih_l0))
+    input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
     # muscle_loss
     max_iso_force_n = env.muscle.max_iso_force / th.mean(env.muscle.max_iso_force) 
-    #max_iso_force_n = env.muscle.max_iso_force / th.square(th.norm(env.muscle.max_iso_force,p='fro'))
-    activation_scaled = all_muscle * max_iso_force_n
-    #muscle_loss = (th.mean( th.sum(th.square(activation_scaled),axis=-1) ))
-    muscle_loss = th.mean(  th.square(  th.sum(activation_scaled,axis=-1) )  )
-    # muscle_loss = th.mean(  th.square(  th.mean(activation_scaled,axis=-1) )  )
+    y = all_muscle * max_iso_force_n
+    muscle_loss = th.mean(th.square(y))
     # hidden_loss
-    d_hidden = th.mean(th.square(th.diff(all_hidden, axis=1)/env.dt))
-    hidden_loss = th.mean(th.square(all_hidden))+0.05*d_hidden
+    y = all_hidden
+    dy = th.diff(y,axis=1)/env.dt
+    hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
+    # position_loss
     position_loss = l1(xy[:,:,0:2], tg)
     # recurrent_loss
-    #recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
+    recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
 
-    loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ recurrent_loss
+    loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss + 1e-5*recurrent_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
