@@ -77,7 +77,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
     # simulate whole episode
     while not terminated:  # will run until `max_ep_duration` is reached
-      all_hidden = th.cat(all_hidden, axis=1)
+      
       action, h = policy(obs,h)
       all_hidden.append(h[0,:,None,:])
       obs, _, terminated, _, info = env.step(action=action)
@@ -93,6 +93,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     
     all_actions = th.cat(all_actions, axis=1)
     all_muscle = th.cat(all_muscle, axis=1)
+    all_hidden = th.cat(all_hidden, axis=1)
 
     # calculate losses
     # input_loss
