@@ -49,9 +49,12 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     n_batch = 3000
 
   # Define Loss function
-  def l1(x, y):
+  def l1(x, y, target_size=0.01):
     """L1 loss"""
-    return th.mean(th.sum(th.abs(x - y), dim=-1))
+    mask = th.norm(x-y,dim=-1,p='fro')<target_size
+    loss_ = th.sum(th.abs(x-y), dim=-1)
+    loss_[mask] = 0
+    return th.mean(loss_)
 
   # Train network
   overall_losses = []
@@ -199,14 +202,14 @@ def test(cfg_file,weight_file,ff_coefficient=None):
 
   # simulate whole episode
   while not terminated:  # will run until `max_ep_duration` is reached
-    
+    all_hidden.append(h[0,:,None,:])
     action, h = policy(obs, h)
 
     obs, reward, terminated, truncated, info = env.step(action=action)  
     xy.append(info["states"]["fingertip"][:,None,:])  # trajectories
     tg.append(info["goal"][:,None,:])  # targets
     all_actions.append(action[:, None, :])
-    all_hidden.append(h[0,:,None,:])
+    
     all_muscles.append(info['states']['muscle'][:,0,None,:])
     
 
