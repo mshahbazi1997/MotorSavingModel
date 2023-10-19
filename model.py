@@ -105,7 +105,8 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     #max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
     max_iso_force_n = env.muscle.max_iso_force / th.square(th.norm(env.muscle.max_iso_force,p='fro'))
     activation_scaled = all_muscle * max_iso_force_n
-    muscle_loss = (th.mean( th.sum(th.square(activation_scaled),axis=-1) )) 
+    #muscle_loss = (th.mean( th.sum(th.square(activation_scaled),axis=-1) ))
+    muscle_loss = th.mean(  th.square(  th.sum(activation_scaled,axis=-1) )  )
     # hidden_loss
     d_hidden = th.mean(th.square(th.diff(all_hidden, axis=1)/env.dt))
     hidden_loss = th.mean(th.square(all_hidden))+0.05*d_hidden
