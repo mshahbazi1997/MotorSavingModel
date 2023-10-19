@@ -54,8 +54,10 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     return th.mean(th.sum(th.abs(x - y), dim=-1))
 
   # Train network
-  losses = []
+  overall_losses = []
   position_losses = []
+  muscle_losses = []
+  hidden_losses = []
   interval = 1000
 
   for batch in range(n_batch):
@@ -75,6 +77,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
     # simulate whole episode
     while not terminated:  # will run until `max_ep_duration` is reached
+      all_hidden = th.cat(all_hidden, axis=1)
       action, h = policy(obs,h)
       all_hidden.append(h[0,:,None,:])
       obs, _, terminated, _, info = env.step(action=action)
@@ -87,34 +90,35 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     # concatenate into a (batch_size, n_timesteps, xy) tensor
     xy = th.cat(xy, axis=1)
     tg = th.cat(tg, axis=1)
-    all_hidden = th.cat(all_hidden, axis=1)
+    
     all_actions = th.cat(all_actions, axis=1)
     all_muscle = th.cat(all_muscle, axis=1)
 
     # calculate losses
     # input_loss
-    input_loss = 1e-6 * th.sum(th.square(policy.gru.weight_ih_l0))
+    input_loss = th.sum(th.square(policy.gru.weight_ih_l0))
     # muscle_loss
-    max_iso_force = env.muscle.max_iso_force
-    max_iso_force_n = max_iso_force / th.mean(max_iso_force) # th.mean(th.square(max_iso_force)) # th.sum(th.squ)/
+    #max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
+    max_iso_force_n = env.muscle.max_iso_force / th.square(th.norm(env.muscle.max_iso_force,p='fro'))
     activation_scaled = all_muscle * max_iso_force_n
-    d_muscle = th.mean(th.square(th.diff(activation_scaled, axis=1)/env.dt))
-    muscle_loss = 5*(th.mean(th.square(activation_scaled))+0.05*d_muscle) # 5
+    muscle_loss = (th.mean( th.sum(th.square(activation_scaled),axis=-1) )) 
     # hidden_loss
     d_hidden = th.mean(th.square(th.diff(all_hidden, axis=1)/env.dt))
-    hidden_loss = 0.1*(th.mean(th.square(all_hidden))+0.05*d_hidden)
-    position_loss = 2*l1(xy[:,:,0:2], tg) # 2
+    hidden_loss = th.mean(th.square(all_hidden))+0.05*d_hidden
+    position_loss = l1(xy[:,:,0:2], tg)
     # recurrent_loss
     #recurrent_loss = 1e-5 * th.sum(th.square(policy.gru.weight_hh_l0))
 
-    loss = input_loss + muscle_loss + hidden_loss + position_loss #+ recurrent_loss
+    loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ recurrent_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
     loss.backward()
     th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)  # important!
     optimizer.step()
-    losses.append(loss.item())
+    overall_losses.append(loss.item())
+    hidden_losses.append(hidden_loss.item())
+    muscle_losses.append(muscle_loss.item())
 
     # test the network
     # Run episode
@@ -153,8 +157,8 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
   # save training history (log)
   with open(log_file, 'w') as file:
-    json.dump(position_losses, file)
-    #json.dump({'losses':losses}, file)
+    #json.dump(position_losses, file)
+    json.dump({'overall_loss':overall_losses,'muscle_loss':muscle_losses,'hidden_loss':hidden_losses,'position_loss':position_losses}, file)
 
   # save environment configuration dictionary
   cfg = env.get_save_config()
