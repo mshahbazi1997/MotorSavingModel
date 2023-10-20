@@ -51,11 +51,11 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   # Define Loss function
   def l1(x, y, target_size=0.01):
     """L1 loss"""
-    #mask = th.norm(x-y,dim=-1,p='fro')<target_size
-    #loss_ = th.sum(th.abs(x-y), dim=-1)
-    #loss_[mask] = 0
-    #return th.mean(loss_)
-    return th.mean(th.sum(th.abs(x - y), dim=-1))
+    mask = th.norm(x-y,dim=-1,p='fro')<target_size
+    loss_ = th.sum(th.abs(x-y), dim=-1)
+    loss_[mask] = 0
+    return th.mean(loss_)
+    #return th.mean(th.sum(th.abs(x - y), dim=-1))
 
   # Train network
   overall_losses = []
@@ -115,7 +115,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     # recurrent_loss
     recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
 
-    loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss + 1e-5*recurrent_loss
+    loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 

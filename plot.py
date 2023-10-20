@@ -10,9 +10,12 @@ def window_average(x, w=10):
     cols = w
     return x[0:w*rows].reshape((rows,cols)).mean(axis=1)
 
-def plot_training_log(log,w=50,figsize=(10,3)):
+def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
+    """
+        loss_type: 'position_loss' or 'hidden_loss' or 'muscle_loss' or 'overall_loss'
+    """
     fig, ax = plt.subplots(figsize=figsize)
-    log = window_average(np.array(log),w=w)
+    log = window_average(np.array(log[loss_type]),w=w)
 
     ax.semilogy(log)
 
