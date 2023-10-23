@@ -120,7 +120,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
     # loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
     # Jon's proposed loss
-    position_loss = l1(xy[:,0:-1,0:2],tg)
+    position_loss = l1(xy[:,:,0:2],tg)
     muscle_loss = th.mean(th.sum(th.square(all_force), dim=-1))
     hidden_loss = th.mean(th.sum(th.square(all_hidden), dim=-1))
     diff_loss =  th.mean(th.sum(th.square(th.diff(all_hidden, 1, dim=1)), dim=-1))
