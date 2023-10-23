@@ -78,6 +78,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     all_actions = []
     all_hidden = []
     all_muscle = []
+    all_force = []
 
     # simulate whole episode
     while not terminated:  # will run until `max_ep_duration` is reached
@@ -90,6 +91,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
       tg.append(info["goal"][:, None, :])  # targets
       all_actions.append(action[:, None, :])
       all_muscle.append(info['states']['muscle'][:,0,None,:])
+      all_force.append(info['states']['muscle'][:,6,None,:])
 
     # concatenate into a (batch_size, n_timesteps, xy) tensor
     xy = th.cat(xy, axis=1)
@@ -98,24 +100,32 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     all_actions = th.cat(all_actions, axis=1)
     all_muscle = th.cat(all_muscle, axis=1)
     all_hidden = th.cat(all_hidden, axis=1)
+    all_force = th.cat(all_force, axis=1)
 
-    # calculate losses
-    # input_loss
-    input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
-    # muscle_loss
-    max_iso_force_n = env.muscle.max_iso_force / th.mean(env.muscle.max_iso_force) 
-    y = all_muscle * max_iso_force_n
-    muscle_loss = th.mean(th.square(y))
-    # hidden_loss
-    y = all_hidden
-    dy = th.diff(y,axis=1)/env.dt
-    hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
-    # position_loss
-    position_loss = l1(xy[:,:,0:2], tg)
-    # recurrent_loss
-    recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
+    # # calculate losses
+    # # input_loss
+    # input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
+    # # muscle_loss
+    # max_iso_force_n = env.muscle.max_iso_force / th.mean(env.muscle.max_iso_force) 
+    # y = all_muscle * max_iso_force_n
+    # muscle_loss = th.mean(th.square(y))
+    # # hidden_loss
+    # y = all_hidden
+    # dy = th.diff(y,axis=1)/env.dt
+    # hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
+    # # position_loss
+    # position_loss = l1(xy[:,:,0:2], tg)
+    # # recurrent_loss
+    # recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
 
-    loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
+    # loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
+    # Jon's proposed loss
+    position_loss = l1(xy[:,0:-1,0:2],tg)
+    muscle_loss = th.mean(th.sum(th.square(all_force), dim=-1))
+    hidden_loss = th.mean(th.sum(th.square(all_hidden), dim=-1))
+    diff_loss =  th.mean(th.sum(th.square(th.diff(all_hidden, 1, dim=1)), dim=-1))
+
+    loss = position_loss + 5e-5*muscle_loss + 5e-5*hidden_loss + 1e-1*diff_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
