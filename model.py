@@ -126,7 +126,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     diff_loss =  th.mean(th.sum(th.square(th.diff(all_hidden, 1, dim=1)), dim=-1))
 
     #loss = position_loss + 5e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
-    loss = position_loss + 1e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
+    loss = position_loss + 1e-5*muscle_loss + 5e-5*hidden_loss + 6e-3*diff_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -236,7 +236,51 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   return xy, tg, all_hidden, all_muscles
 
 
+def test2(cfg_file,weight_file,all_hidden,ff_coefficient=None):
+  device = th.device("cpu")
 
+  # load configuration
+  with open(cfg_file,'r') as file:
+    cfg = json.load(file)
+
+  if ff_coefficient is None:
+    ff_coefficient=cfg['ff_coefficient']
+    
+  # environment and network
+  env = load_env(CentreOutFF, cfg)
+  policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+  policy.load_state_dict(th.load(weight_file))
+  
+  batch_size = 8
+  # initialize batch
+  obs, info = env.reset(condition ='test',catch_trial_perc=0,options={'batch_size':batch_size},ff_coefficient=ff_coefficient)
+
+  h = policy.init_hidden(batch_size=batch_size)
+
+  # initial positions and targets
+  xy = [info["states"]["fingertip"][:, None, :]]
+  tg = [info["goal"][:, None, :]]
+  all_actions = []
+  all_muscles = []
+
+  # simulate whole episode
+  for i in range(100):  # will run until `max_ep_duration` is reached
+    h=all_hidden[:,i,:][None,:,:]    
+    action, _ = policy(obs, h)
+    obs, _, _, _, info = env.step(action=action)  
+    xy.append(info["states"]["fingertip"][:,None,:])  # trajectories
+    tg.append(info["goal"][:,None,:])  # targets
+    all_actions.append(action[:, None, :])
+    all_muscles.append(info['states']['muscle'][:,0,None,:])
+    
+
+  # concatenate into a (batch_size, n_timesteps, xy) tensor
+  xy = th.detach(th.cat(xy, axis=1))
+  tg = th.detach(th.cat(tg, axis=1))
+  all_actions = th.detach(th.cat(all_actions, axis=1))
+  all_muscles = th.detach(th.cat(all_muscles, axis=1))
+
+  return xy, tg, all_muscles
 
 
 if __name__ == "__main__":
