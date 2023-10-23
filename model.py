@@ -51,11 +51,11 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   # Define Loss function
   def l1(x, y, target_size=0.01):
     """L1 loss"""
-    mask = th.norm(x-y,dim=-1,p='fro')<target_size
-    loss_ = th.sum(th.abs(x-y), dim=-1)
-    loss_[mask] = 0
-    return th.mean(loss_)
-    #return th.mean(th.sum(th.abs(x - y), dim=-1))
+    #mask = th.norm(x-y,dim=-1,p='fro')<target_size
+    #loss_ = th.sum(th.abs(x-y), dim=-1)
+    #loss_[mask] = 0
+    #return th.mean(loss_)
+    return th.mean(th.sum(th.abs(x - y), dim=-1))
 
   # Train network
   overall_losses = []
