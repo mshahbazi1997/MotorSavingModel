@@ -125,7 +125,8 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     hidden_loss = th.mean(th.sum(th.square(all_hidden), dim=-1))
     diff_loss =  th.mean(th.sum(th.square(th.diff(all_hidden, 1, dim=1)), dim=-1))
 
-    loss = position_loss + 5e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
+    #loss = position_loss + 5e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
+    loss = position_loss + 1e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 

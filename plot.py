@@ -15,7 +15,9 @@ def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
         loss_type: 'position_loss' or 'hidden_loss' or 'muscle_loss' or 'overall_loss'
     """
     fig, ax = plt.subplots(figsize=figsize)
-    log = window_average(np.array(log[loss_type]),w=w)
+    if isinstance(log,dict):
+       log = log[loss_type]
+    log = window_average(np.array(log),w=w)
 
     ax.semilogy(log)
 
