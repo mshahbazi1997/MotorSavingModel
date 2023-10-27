@@ -2,7 +2,7 @@ import torch as th
 
 
 class Policy(th.nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, device):
+    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, device, freeze_output_layer=False):
         super().__init__()
         self.device = device
         self.hidden_dim = hidden_dim
@@ -12,6 +12,9 @@ class Policy(th.nn.Module):
         self.fc = th.nn.Linear(hidden_dim, output_dim)
         self.sigmoid = th.nn.Sigmoid()
         
+        if freeze_output_layer:
+            for param in self.fc.parameters():
+                param.requires_grad = False
 
         # the default initialization in torch isn't ideal
         for name, param in self.named_parameters():

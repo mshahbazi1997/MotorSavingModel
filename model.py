@@ -17,6 +17,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
   # Set configuaration and network
   if phase>=1:
+    print("Training phase {}...".format(phase))
     # load config and weights from the previous phase
     weight_file = list(Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_weights'))[0]
     cfg_file = list(Path(output_folder).glob(f'{model_name}_phase={phase-1}_*_cfg.json'))[0]
@@ -27,20 +28,20 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
     # environment and network
     env = load_env(CentreOutFF,cfg)
-    policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+    policy = Policy(env.observation_space.shape[0], 128, env.n_muscles, device=device, freeze_output_layer=True)
     policy.load_state_dict(th.load(weight_file))
 
   else:
     # environment and network
     env = load_env(CentreOutFF)
-    policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+    policy = Policy(env.observation_space.shape[0], 128, env.n_muscles, device=device)
   
   
   if condition=='growing_up': 
-    optimizer = th.optim.Adam(policy.parameters(), lr=0.001)
+    optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
     batch_size = 128
     catch_trial_perc = 50
-    n_batch = 10000
+    n_batch = 70000
 
   else: # for training use biologily plausible optimizer
     optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
@@ -102,31 +103,33 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     all_hidden = th.cat(all_hidden, axis=1)
     all_force = th.cat(all_force, axis=1)
 
-    # # calculate losses
-    # # input_loss
-    # input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
-    # # muscle_loss
-    # max_iso_force_n = env.muscle.max_iso_force / th.mean(env.muscle.max_iso_force) 
-    # y = all_muscle * max_iso_force_n
-    # muscle_loss = th.mean(th.square(y))
-    # # hidden_loss
-    # y = all_hidden
-    # dy = th.diff(y,axis=1)/env.dt
-    # hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
-    # # position_loss
-    # position_loss = l1(xy[:,:,0:2], tg)
-    # # recurrent_loss
-    # recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
+    # calculate losses
+    # input_loss
+    input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
+    # muscle_loss
+    max_iso_force_n = env.muscle.max_iso_force / th.mean(env.muscle.max_iso_force) 
+    y = all_muscle * max_iso_force_n
+    muscle_loss = th.mean(th.square(y))
+    # hidden_loss
+    y = all_hidden
+    dy = th.diff(y,axis=1)/env.dt
+    hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
+    # position_loss
+    position_loss = l1(xy[:,:,0:2], tg)
+    # recurrent_loss
+    recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
 
-    # loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
+    loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss + 1e-5*recurrent_loss
+
     # Jon's proposed loss
-    position_loss = l1(xy[:,:,0:2],tg)
-    muscle_loss = th.mean(th.sum(th.square(all_force), dim=-1))
-    hidden_loss = th.mean(th.sum(th.square(all_hidden), dim=-1))
-    diff_loss =  th.mean(th.sum(th.square(th.diff(all_hidden, 1, dim=1)), dim=-1))
+    #position_loss = l1(xy[:,:,0:2],tg)
+    #muscle_loss = th.mean(th.sum(th.square(all_force), dim=-1))
+    #muscle_loss = th.mean(th.sum(all_force, dim=-1))
+    #hidden_loss = th.mean(th.sum(th.square(all_hidden), dim=-1))
+    #diff_loss =  th.mean(th.sum(th.square(th.diff(all_hidden, 1, dim=1)), dim=-1))
 
     #loss = position_loss + 5e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
-    loss = position_loss + 1e-5*muscle_loss + 5e-5*hidden_loss + 6e-3*diff_loss
+    #loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 1e-1*diff_loss
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -196,7 +199,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
     
   # environment and network
   env = load_env(CentreOutFF, cfg)
-  policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+  policy = Policy(env.observation_space.shape[0], 128, env.n_muscles, device=device)
   policy.load_state_dict(th.load(weight_file))
   
   batch_size = 8
@@ -248,7 +251,7 @@ def test2(cfg_file,weight_file,all_hidden,ff_coefficient=None):
     
   # environment and network
   env = load_env(CentreOutFF, cfg)
-  policy = Policy(env.observation_space.shape[0], 32, env.n_muscles, device=device)
+  policy = Policy(env.observation_space.shape[0], 128, env.n_muscles, device=device)
   policy.load_state_dict(th.load(weight_file))
   
   batch_size = 8
@@ -302,8 +305,8 @@ if __name__ == "__main__":
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
           # pretraining the network using ADAM
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,0,condition='growing_up',directory_name=directory_name) 
-                                                     for iteration in these_iters)
+          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,0,condition='growing_up',directory_name=directory_name) 
+          #                                           for iteration in these_iters)
           # NF1
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,1,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)
@@ -326,10 +329,10 @@ if __name__ == "__main__":
       iter_list = range(16)
       n_jobs = 16
 
-      train(1,ff_coefficient,phase,condition=condition,directory_name=directory_name)
-      #while len(iter_list) > 0:
-      #    these_iters = iter_list[0:n_jobs]
-      #    iter_list = iter_list[n_jobs:]
-      #    result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,condition=condition,directory_name=directory_name) 
-      #                                               for iteration in these_iters)
+      #train(1,ff_coefficient,phase,condition=condition,directory_name=directory_name)
+      while len(iter_list) > 0:
+          these_iters = iter_list[0:n_jobs]
+          iter_list = iter_list[n_jobs:]
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,condition=condition,directory_name=directory_name) 
+                                                     for iteration in these_iters)
 

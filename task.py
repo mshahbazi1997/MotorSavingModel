@@ -127,7 +127,10 @@ class CentreOutFF(mn.environment.Environment):
     # Calculate endpoiont_load
     vel = self.states["cartesian"][:,2:]
     FF_matvel = th.tensor([[0, 1], [-1, 0]], dtype=th.float32)
+    # set endpoint load to zero before go cue
     self.endpoint_load = self.ff_coefficient * (vel@FF_matvel.T)
+    mask = self.elapsed < self.go_cue_time
+    self.endpoint_load[mask] = 0
 
     # TODO: what is the purpose of clone here?
     self.goal = self.goal.clone()
