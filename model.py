@@ -1,6 +1,7 @@
 import os
 import sys 
 from utils import create_directory, load_env
+from utils import calculate_angles_between_vectors
 import motornet as mn
 from task import CentreOutFF
 from policy import Policy
@@ -61,6 +62,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   # Train network
   overall_losses = []
   position_losses = []
+  angle_losses = []
   muscle_losses = []
   hidden_losses = []
   interval = 1000
@@ -149,20 +151,27 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     # initial positions and targets
     xy = []
     tg = []
+    vel = []
     # simulate whole episode
     while not terminated:  # will run until `max_ep_duration` is reached
       action, h = policy(obs,h)
       obs, _, terminated, _, info = env.step(action=action)
 
-      xy.append(info['states']['cartesian'][:, None, :])  # trajectories
+      #xy.append(info['states']['cartesian'][:, None, :])  # trajectories
+      xy.append(info["states"]["fingertip"][:,None,:])  # trajectories
       tg.append(info["goal"][:, None, :])  # targets
+      vel.append(info["states"]["cartesian"][:,None,2:]) # velocity
 
     # concatenate into a (batch_size, n_timesteps, xy) tensor
     xy = th.cat(xy, axis=1)
     tg = th.cat(tg, axis=1)
+    vel = th.cat(vel, axis=1)
 
     position_loss = l1(xy[:,:,0:2],tg)
     position_losses.append(position_loss.item())
+
+    angle_loss = calculate_angles_between_vectors(th.detach(vel), th.detach(tg), th.detach(xy))
+    angle_losses.append(angle_loss.item())
 
     if (batch % interval == 0) and (batch != 0):
       print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(position_losses[-interval:])/interval))
@@ -178,7 +187,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   # save training history (log)
   with open(log_file, 'w') as file:
     #json.dump(position_losses, file)
-    json.dump({'overall_loss':overall_losses,'muscle_loss':muscle_losses,'hidden_loss':hidden_losses,'position_loss':position_losses}, file)
+    json.dump({'overall_loss':overall_losses,'muscle_loss':muscle_losses,'hidden_loss':hidden_losses,'position_loss':position_losses,'angle_loss':angle_losses}, file)
 
   # save environment configuration dictionary
   cfg = env.get_save_config()
@@ -212,6 +221,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   # initial positions and targets
   xy = [info["states"]["fingertip"][:, None, :]]
   tg = [info["goal"][:, None, :]]
+  vel = [info["states"]["cartesian"][:, None,2:]]
   all_actions = []
   all_muscles = []
   all_hidden = []
@@ -224,6 +234,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
     obs, reward, terminated, truncated, info = env.step(action=action)  
     xy.append(info["states"]["fingertip"][:,None,:])  # trajectories
     tg.append(info["goal"][:,None,:])  # targets
+    vel.append(info["states"]["cartesian"][:,None,2:])
     all_actions.append(action[:, None, :])
     
     all_muscles.append(info['states']['muscle'][:,0,None,:])
@@ -232,58 +243,13 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   # concatenate into a (batch_size, n_timesteps, xy) tensor
   xy = th.detach(th.cat(xy, axis=1))
   tg = th.detach(th.cat(tg, axis=1))
+  vel = th.detach(th.cat(vel, axis=1))
   all_hidden = th.detach(th.cat(all_hidden, axis=1))
   all_actions = th.detach(th.cat(all_actions, axis=1))
   all_muscles = th.detach(th.cat(all_muscles, axis=1))
 
-  return xy, tg, all_hidden, all_muscles
+  return xy, tg, all_hidden, all_muscles, vel
 
-
-def test2(cfg_file,weight_file,all_hidden,ff_coefficient=None):
-  device = th.device("cpu")
-
-  # load configuration
-  with open(cfg_file,'r') as file:
-    cfg = json.load(file)
-
-  if ff_coefficient is None:
-    ff_coefficient=cfg['ff_coefficient']
-    
-  # environment and network
-  env = load_env(CentreOutFF, cfg)
-  policy = Policy(env.observation_space.shape[0], 128, env.n_muscles, device=device)
-  policy.load_state_dict(th.load(weight_file))
-  
-  batch_size = 8
-  # initialize batch
-  obs, info = env.reset(condition ='test',catch_trial_perc=0,options={'batch_size':batch_size},ff_coefficient=ff_coefficient)
-
-  h = policy.init_hidden(batch_size=batch_size)
-
-  # initial positions and targets
-  xy = [info["states"]["fingertip"][:, None, :]]
-  tg = [info["goal"][:, None, :]]
-  all_actions = []
-  all_muscles = []
-
-  # simulate whole episode
-  for i in range(100):  # will run until `max_ep_duration` is reached
-    h=all_hidden[:,i,:][None,:,:]    
-    action, _ = policy(obs, h)
-    obs, _, _, _, info = env.step(action=action)  
-    xy.append(info["states"]["fingertip"][:,None,:])  # trajectories
-    tg.append(info["goal"][:,None,:])  # targets
-    all_actions.append(action[:, None, :])
-    all_muscles.append(info['states']['muscle'][:,0,None,:])
-    
-
-  # concatenate into a (batch_size, n_timesteps, xy) tensor
-  xy = th.detach(th.cat(xy, axis=1))
-  tg = th.detach(th.cat(tg, axis=1))
-  all_actions = th.detach(th.cat(all_actions, axis=1))
-  all_muscles = th.detach(th.cat(all_muscles, axis=1))
-
-  return xy, tg, all_muscles
 
 
 if __name__ == "__main__":
@@ -305,8 +271,8 @@ if __name__ == "__main__":
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
           # pretraining the network using ADAM
-          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,0,condition='growing_up',directory_name=directory_name) 
-          #                                           for iteration in these_iters)
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,0,condition='growing_up',directory_name=directory_name) 
+                                                     for iteration in these_iters)
           # NF1
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,1,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)

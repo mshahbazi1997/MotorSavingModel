@@ -1,6 +1,7 @@
 import os
 import datetime
 import motornet as mn
+import numpy as np
 
 def create_directory(directory_name=None):
     if directory_name is None:
@@ -66,3 +67,38 @@ def load_env(task,cfg=None):
                vision_delay=vision_delay)
 
     return env
+
+def calculate_angles_between_vectors(vel, tg, xy):
+    """
+    Calculate angles between vectors X2 and X3.
+
+    Parameters:
+    - vel (numpy.ndarray): Velocity array.
+    - tg (numpy.ndarray): Tg array.
+    - xy (numpy.ndarray): Xy array.
+
+    Returns:
+    - angles (numpy.ndarray): An array of angles in degrees between vectors X2 and X3.
+    """
+    
+    # Compute the magnitude of velocity and find the index to the maximum velocity
+    vel = np.linalg.norm(vel, axis=-1)
+    idx = np.argmax(vel, axis=1)
+
+    tg = np.array(tg)
+    xy = np.array(xy)
+
+    # Calculate vectors X2 and X3
+    X2 = tg[:,-1,:]
+    X1 = xy[:,25,:]
+    X3 = xy[np.arange(xy.shape[0]), idx, :]
+
+    X2 = X2 - X1
+    X3 = X3 - X1
+    
+    # Calculate the angles in degrees
+    angles = np.degrees(np.arccos(np.sum(X2 * X3, axis=1) / (1e-8+np.linalg.norm(X2, axis=1) * np.linalg.norm(X3, axis=1)))).mean()
+
+    return angles
+
+
