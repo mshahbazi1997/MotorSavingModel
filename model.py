@@ -121,7 +121,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     # recurrent_loss
     recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
 
-    loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss + 1e-5*recurrent_loss
+    loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
 
     # Jon's proposed loss
     #position_loss = l1(xy[:,:,0:2],tg)
