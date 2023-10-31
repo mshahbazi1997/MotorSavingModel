@@ -82,8 +82,8 @@ def calculate_angles_between_vectors(vel, tg, xy):
     """
     
     # Compute the magnitude of velocity and find the index to the maximum velocity
-    vel = np.linalg.norm(vel, axis=-1)
-    idx = np.argmax(vel, axis=1)
+    vel_norm = np.linalg.norm(vel, axis=-1)
+    idx = np.argmax(vel_norm, axis=1)
 
     tg = np.array(tg)
     xy = np.array(xy)

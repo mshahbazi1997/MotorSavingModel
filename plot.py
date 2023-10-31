@@ -26,7 +26,7 @@ def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
     return fig, ax
 
 
-def plot_simulations(xy, target_xy,figsize=(5,3)):
+def plot_simulations(xy, target_xy, vel=None,figsize=(5,3)):
     target_x = target_xy[:, -1, 0]
     target_y = target_xy[:, -1, 1]
 
@@ -38,6 +38,21 @@ def plot_simulations(xy, target_xy,figsize=(5,3)):
     plotor(axis=ax, cart_results=xy)
 
     ax.scatter(target_x, target_y)
+
+    if vel is not None:
+        # plot the line the connect initial and final positions
+        for i in range(8):
+            ax.plot([xy[i, 0, 0], target_xy[i, -1, 0]], [xy[i, 0, 1], target_xy[i, -1, 1]], color='k', alpha=0.2, linewidth=0.5,linestyle='--')
+
+        # plot the line that connect initial and peak velocity positions
+        vel_norm = np.linalg.norm(vel, axis=-1)
+        idx = np.argmax(vel_norm, axis=1)
+        xy_peakvel = xy[np.arange(xy.shape[0]), idx, :]
+        print(xy_peakvel.shape)
+
+        for i in range(8):
+            ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
+    
     return fig, ax
 
 def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),init_phase=1,loss_type='position_loss'):
@@ -132,3 +147,38 @@ def plot_activation(all_hidden, all_muscles):
         ax[i,0].set_xlabel('time (s)')
         ax[i,1].set_xlabel('time (s)')
     return fg, ax
+
+
+def plot_traj(X_latent_list, plot_scatter=1, marker=['x','o'],alpha=[1,0.5], which_times=[24], dim=3, figsize=(9, 6)):
+    angle_set = np.deg2rad(np.arange(0, 360, 45))  # 8 directions
+    color_list = [plt.cm.brg(cond / (2 * np.pi)) for cond in angle_set]
+
+    if dim == 2:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
+
+        for i,X_latent in enumerate(X_latent_list):
+            if plot_scatter:
+                for tr in range(8):
+                    ax.scatter(X_latent[tr, which_times, 0], X_latent[tr, which_times, 1], color=color_list[tr],marker=marker[i])
+            else:
+                for tr in range(8):
+                    ax.plot(X_latent[tr, which_times, 0].T, X_latent[tr, which_times, 1].T, color=color_list[tr],alpha=alpha[i])
+
+    elif dim == 3:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111, projection='3d')
+
+        for i,X_latent in enumerate(X_latent_list):
+            if plot_scatter:
+                for tr in range(8):
+                    ax.scatter3D(X_latent[tr, which_times, 0], X_latent[tr, which_times, 1], X_latent[tr, which_times, 2], color=color_list[tr],marker=marker[i])
+            else:
+                for tr in range(8):
+                    ax.plot3D(X_latent[tr, which_times, 0].T, X_latent[tr, which_times, 1].T, X_latent[tr, which_times, 2].T, color=color_list[tr],alpha=alpha[i])
+
+    else:
+        print("Dimension must be 2 or 3!")
+
+    return fig, ax
+
