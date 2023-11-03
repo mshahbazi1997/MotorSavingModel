@@ -12,6 +12,7 @@ from joblib import Parallel, delayed
 from pathlib import Path
 
 def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
+  num_hidden=50
   output_folder = create_directory(directory_name=directory_name)
   model_name = "model{:02d}".format(model_num)
   device = th.device("cpu")
@@ -29,20 +30,20 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
     # environment and network
     env = load_env(CentreOutFF,cfg)
-    policy = Policy(env.observation_space.shape[0], 128, env.n_muscles, device=device, freeze_output_layer=True)
+    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, freeze_output_layer=True)
     policy.load_state_dict(th.load(weight_file))
 
   else:
     # environment and network
     env = load_env(CentreOutFF)
-    policy = Policy(env.observation_space.shape[0], 128, env.n_muscles, device=device)
+    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device)
   
   
   if condition=='growing_up': 
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
     batch_size = 128
     catch_trial_perc = 50
-    n_batch = 70000
+    n_batch = 20000
 
   else: # for training use biologily plausible optimizer
     optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
@@ -170,7 +171,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     position_loss = l1(xy[:,:,0:2],tg)
     position_losses.append(position_loss.item())
 
-    angle_loss = calculate_angles_between_vectors(th.detach(vel), th.detach(tg), th.detach(xy))
+    angle_loss = np.mean(calculate_angles_between_vectors(th.detach(vel), th.detach(tg), th.detach(xy)))
     angle_losses.append(angle_loss.item())
 
     if (batch % interval == 0) and (batch != 0):
@@ -197,6 +198,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   print("done.")
 
 def test(cfg_file,weight_file,ff_coefficient=None):
+  num_hidden = 50
   device = th.device("cpu")
 
   # load configuration
@@ -208,7 +210,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
     
   # environment and network
   env = load_env(CentreOutFF, cfg)
-  policy = Policy(env.observation_space.shape[0], 128, env.n_muscles, device=device)
+  policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device)
   policy.load_state_dict(th.load(weight_file))
   
   batch_size = 8
@@ -277,13 +279,13 @@ if __name__ == "__main__":
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,1,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF1
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,10,2,condition='train',directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,2,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)
           # NF2
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,3,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,10,4,condition='train',directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,4,condition='train',directory_name=directory_name) 
                                                      for iteration in these_iters)
           
     else: ## training networks for each phase separately

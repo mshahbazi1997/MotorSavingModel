@@ -96,8 +96,12 @@ def calculate_angles_between_vectors(vel, tg, xy):
     X2 = X2 - X1
     X3 = X3 - X1
     
+    cross_product = np.cross(X3, X2)
+    # Calculate the sign of the angle
+    sign = np.sign(cross_product)
+
     # Calculate the angles in degrees
-    angles = np.degrees(np.arccos(np.sum(X2 * X3, axis=1) / (1e-8+np.linalg.norm(X2, axis=1) * np.linalg.norm(X3, axis=1)))).mean()
+    angles = sign*np.degrees(np.arccos(np.sum(X2 * X3, axis=1) / (1e-8+np.linalg.norm(X2, axis=1) * np.linalg.norm(X3, axis=1))))
 
     return angles
 
