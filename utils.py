@@ -105,4 +105,50 @@ def calculate_angles_between_vectors(vel, tg, xy):
 
     return angles
 
+def calculate_lateral_deviation(xy, tg):
+    """
+    Calculate the lateral deviation of trajectory xy from the line connecting X1 and X2.
+
+    Parameters:
+    - tg (numpy.ndarray): Tg array.
+    - xy (numpy.ndarray): Xy array.
+
+    Returns:
+    - deviation (numpy.ndarray): An array of lateral deviations.
+    """
+    tg = np.array(tg)
+    xy = np.array(xy)
+
+    # Calculate vectors X2 and X1
+    X2 = tg[:,-1,:]
+    X1 = xy[:,25,:]
+
+    # Calculate the vector representing the line connecting X1 to X2
+    line_vector = X2 - X1
+    line_vector2 = np.tile(line_vector[:,None,:],(1,xy.shape[1],1))
+
+    # Calculate the vector representing the difference between xy and X1
+    trajectory_vector = xy - X1[:,None,:]
+
+    projection = np.sum(line_vector2 * trajectory_vector, axis=-1)/np.sum(line_vector2 * line_vector2, axis=-1)
+    projection = line_vector2 * projection[:,:,np.newaxis]
+
+    lateral_dev = np.linalg.norm(trajectory_vector - projection,axis=2)
+
+    idx = np.argmax(lateral_dev,axis=1)
+
+    max_laterl_dev = lateral_dev[np.arange(idx.shape[0]), idx]
+
+    init = projection[np.arange(idx.shape[0]),idx,:]
+    init = init+X1
+
+    endp = xy[np.arange(idx.shape[0]),idx,:]
+
+
+    cross_product = np.cross(endp-X1, X2-X1)
+    # Calculate the sign of the angle
+    sign = np.sign(cross_product)
+
+
+    return sign*max_laterl_dev, init, endp
 

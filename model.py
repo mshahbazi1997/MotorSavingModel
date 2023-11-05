@@ -1,7 +1,7 @@
 import os
 import sys 
 from utils import create_directory, load_env
-from utils import calculate_angles_between_vectors
+from utils import calculate_angles_between_vectors, calculate_lateral_deviation
 import motornet as mn
 from task import CentreOutFF
 from policy import Policy
@@ -64,6 +64,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   overall_losses = []
   position_losses = []
   angle_losses = []
+  lat_losses = []
   muscle_losses = []
   hidden_losses = []
   interval = 1000
@@ -173,6 +174,10 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
 
     angle_loss = np.mean(calculate_angles_between_vectors(th.detach(vel), th.detach(tg), th.detach(xy)))
     angle_losses.append(angle_loss.item())
+
+    lat_loss, _, _ = calculate_lateral_deviation(th.detach(xy), th.detach(tg))
+    lat_loss = np.mean(lat_loss)
+    lat_losses.append(lat_loss.item())
 
     if (batch % interval == 0) and (batch != 0):
       print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(position_losses[-interval:])/interval))

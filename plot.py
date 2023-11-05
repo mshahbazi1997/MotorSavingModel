@@ -3,6 +3,7 @@ import motornet as mn
 import numpy as np
 from pathlib import Path
 import json
+from utils import *
 
 
 def window_average(x, w=10):
@@ -39,6 +40,12 @@ def plot_simulations(xy, target_xy, vel=None,figsize=(5,3)):
 
     ax.scatter(target_x, target_y)
 
+    # plot lateral deviation line
+    _, init, endp = calculate_lateral_deviation(xy, target_xy)
+    for i in range(8):
+        ax.plot([init[i, 0], endp[i, 0]], [init[i, 1], endp[i, 1]], color='b', alpha=1, linewidth=0.5,linestyle='-')
+
+
     if vel is not None:
         # plot the line the connect initial and final positions
         for i in range(8):
@@ -48,7 +55,6 @@ def plot_simulations(xy, target_xy, vel=None,figsize=(5,3)):
         vel_norm = np.linalg.norm(vel, axis=-1)
         idx = np.argmax(vel_norm, axis=1)
         xy_peakvel = xy[np.arange(xy.shape[0]), idx, :]
-        print(xy_peakvel.shape)
 
         for i in range(8):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
