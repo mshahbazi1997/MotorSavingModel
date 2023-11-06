@@ -2,7 +2,7 @@ import torch as th
 
 
 class Policy(th.nn.Module):
-    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, device, freeze_output_layer=False):
+    def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, device, freeze_output_layer=False, learn_h0=True):
         super().__init__()
         self.device = device
         self.hidden_dim = hidden_dim
@@ -32,7 +32,8 @@ class Policy(th.nn.Module):
                 th.nn.init.constant_(param, -5.)
             else:
                 raise ValueError
-        #self.h0 = th.nn.Parameter(th.zeros(self.n_layers, 1, hidden_dim), requires_grad=True)
+        if learn_h0:
+            self.h0 = th.nn.Parameter(th.zeros(self.n_layers, 1, hidden_dim), requires_grad=True)
         
         self.to(device)
 
@@ -46,7 +47,10 @@ class Policy(th.nn.Module):
         return u, h
     
     def init_hidden(self, batch_size):
-        weight = next(self.parameters()).data
-        hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
-        #hidden = self.h0.repeat(1,batch_size,1).to(self.device)
+        
+        if hasattr(self, 'h0'):
+            hidden = self.h0.repeat(1, batch_size, 1).to(self.device)
+        else:
+            weight = next(self.parameters()).data
+            hidden = weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
         return hidden

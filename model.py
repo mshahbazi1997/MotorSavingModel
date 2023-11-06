@@ -43,14 +43,16 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
     batch_size = 128
     catch_trial_perc = 50
-    n_batch = 20000
+    n_batch = 10000
 
   else: # for training use biologily plausible optimizer
     optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
     batch_size = 1024
     catch_trial_perc = 50
-    n_batch = 3000
-
+    n_batch = 500 # don't need such long training for phase 1 and 3
+    if phase == 2 or phase == 4:
+      n_batch = 3000
+    
   # Define Loss function
   def l1(x, y, target_size=0.01):
     """L1 loss"""
@@ -193,7 +195,7 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   # save training history (log)
   with open(log_file, 'w') as file:
     #json.dump(position_losses, file)
-    json.dump({'overall_loss':overall_losses,'muscle_loss':muscle_losses,'hidden_loss':hidden_losses,'position_loss':position_losses,'angle_loss':angle_losses}, file)
+    json.dump({'overall_loss':overall_losses,'muscle_loss':muscle_losses,'hidden_loss':hidden_losses,'position_loss':position_losses,'angle_loss':angle_losses,'lat_loss':lat_losses}, file)
 
   # save environment configuration dictionary
   cfg = env.get_save_config()
@@ -203,7 +205,6 @@ def train(model_num,ff_coefficient,phase,condition='train',directory_name=None):
   print("done.")
 
 def test(cfg_file,weight_file,ff_coefficient=None):
-  num_hidden = 50
   device = th.device("cpu")
 
   # load configuration
@@ -215,8 +216,13 @@ def test(cfg_file,weight_file,ff_coefficient=None):
     
   # environment and network
   env = load_env(CentreOutFF, cfg)
-  policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device)
-  policy.load_state_dict(th.load(weight_file))
+  w = th.load(weight_file)
+  num_hidden = int(w['gru.weight_ih_l0'].shape[0]/3)
+  if 'h0' in w.keys():
+    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, learn_h0=True)
+  else:
+    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, learn_h0=False)
+  policy.load_state_dict(w)
   
   batch_size = 8
   # initialize batch
