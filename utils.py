@@ -18,8 +18,8 @@ def create_directory(directory_name=None):
         # Create the directory if it doesn't exist
         os.makedirs(directory_path)
         print(f"Directory '{directory_path}' created successfully.")
-    else:
-        print(f"Directory '{directory_path}' already exists.")
+    #else:
+        #print(f"Directory '{directory_path}' already exists.")
 
     # Return the created directory's name (whether it was newly created or already existed)
     return directory_path
@@ -80,13 +80,14 @@ def calculate_angles_between_vectors(vel, tg, xy):
     Returns:
     - angles (numpy.ndarray): An array of angles in degrees between vectors X2 and X3.
     """
+
+    tg = np.array(tg)
+    xy = np.array(xy)
+    vel = np.array(vel)
     
     # Compute the magnitude of velocity and find the index to the maximum velocity
     vel_norm = np.linalg.norm(vel, axis=-1)
     idx = np.argmax(vel_norm, axis=1)
-
-    tg = np.array(tg)
-    xy = np.array(xy)
 
     # Calculate vectors X2 and X3
     X2 = tg[:,-1,:]
