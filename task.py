@@ -19,6 +19,9 @@ class CentreOutFF(mn.environment.Environment):
             ff_coefficient: float = 0., 
             condition: str = 'train',
             catch_trial_perc: float = 50,
+            is_channel: bool = False,
+            K: float = 1,
+            B: float = -1,
             go_cue_range: Union[list, tuple, np.ndarray] = (0.1, 0.3),
             options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
 
@@ -32,6 +35,9 @@ class CentreOutFF(mn.environment.Environment):
     self.catch_trial_perc = catch_trial_perc
     self.ff_coefficient = ff_coefficient
     self.go_cue_range = go_cue_range # in seconds
+    self.is_channel = is_channel
+    self.K = K
+    self.B = B
     
     if (condition=='train'): # train net to reach to random targets
 
@@ -105,7 +111,7 @@ class CentreOutFF(mn.environment.Environment):
     
     endpoint_load = th.zeros((batch_size,2)).to(self.device)
     self.endpoint_load = endpoint_load
-
+    
     info = {
       "states": self.states,
       "action": action,
@@ -126,15 +132,36 @@ class CentreOutFF(mn.environment.Environment):
 
     # Calculate endpoiont_load
     vel = self.states["cartesian"][:,2:]
-    FF_matvel = th.tensor([[0, 1], [-1, 0]], dtype=th.float32)
-    # set endpoint load to zero before go cue
-    self.endpoint_load = self.ff_coefficient * (vel@FF_matvel.T)
-    mask = self.elapsed < self.go_cue_time
-    self.endpoint_load[mask] = 0
 
-    # TODO: what is the purpose of clone here?
     self.goal = self.goal.clone()
     self.init = self.init.clone()
+
+    if self.is_channel:
+
+      X2 = self.goal
+      X1 = self.init
+
+      # vector that connect initial position to the target
+      line_vector = X2 - X1
+
+      xy = self.states["cartesian"][:,2:]
+      xy = xy - X1
+
+      projection = th.sum(line_vector * xy, axis=-1)/th.sum(line_vector * line_vector, axis=-1)
+      projection = line_vector * projection[:,None]
+
+      err = xy - projection
+      
+      F = -1*(self.B*err+self.K*vel)
+      self.endpoint_load = F
+
+    else:
+      FF_matvel = th.tensor([[0, 1], [-1, 0]], dtype=th.float32)
+      # set endpoint load to zero before go cue
+      self.endpoint_load = self.ff_coefficient * (vel@FF_matvel.T)
+
+    mask = self.elapsed < self.go_cue_time
+    self.endpoint_load[mask] = 0
 
     # specify go cue time
     mask = self.elapsed >= (self.go_cue_time + (self.vision_delay-1) * self.dt)

@@ -105,7 +105,7 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
   print("Done...")
 
 
-def test(cfg_file,weight_file,ff_coefficient=None):
+def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1):
   device = th.device("cpu")
 
   # load configuration
@@ -126,7 +126,7 @@ def test(cfg_file,weight_file,ff_coefficient=None):
   
   
   # Run episode
-  xy, tg, vel, all_hidden, all_muscle, all_force = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,detach=True)
+  xy, tg, vel, all_hidden, all_muscle, all_force = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True)
   
 
   return xy, tg, vel, all_hidden, all_muscle, all_force
@@ -174,9 +174,9 @@ def cal_loss(xy, tg, vel, all_hidden, all_muscle, all_force, max_iso_force, dt, 
 
 
 
-def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, detach=False):
+def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,K=1,B=-1,detach=False):
   h = policy.init_hidden(batch_size=batch_size)
-  obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size})
+  obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, is_channel=is_channel,K=K,B=B)
   terminated = False
 
   xy, tg, vel, all_actions, all_hidden, all_muscle, all_force = [], [], [], [], [], [], []
