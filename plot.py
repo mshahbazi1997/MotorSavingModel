@@ -41,7 +41,7 @@ def plot_simulations(xy, target_xy, vel=None,figsize=(5,3)):
     ax.scatter(target_x, target_y)
 
     # plot lateral deviation line
-    _, init, endp = calculate_lateral_deviation(xy, target_xy)
+    _, init, endp, _ = calculate_lateral_deviation(xy, target_xy)
     for i in range(8):
         ax.plot([init[i, 0], endp[i, 0]], [init[i, 1], endp[i, 1]], color='b', alpha=1, linewidth=0.5,linestyle='-')
 

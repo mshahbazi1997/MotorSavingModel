@@ -106,7 +106,7 @@ def calculate_angles_between_vectors(vel, tg, xy):
 
     return angles
 
-def calculate_lateral_deviation(xy, tg):
+def calculate_lateral_deviation(xy, tg, vel=None):
     """
     Calculate the lateral deviation of trajectory xy from the line connecting X1 and X2.
 
@@ -151,5 +151,19 @@ def calculate_lateral_deviation(xy, tg):
     sign = np.sign(cross_product)
 
 
-    return sign*max_laterl_dev, init, endp
+    opt={'lateral_dev':np.mean(lateral_dev,axis=-1),
+         'max_lateral_dev':max_laterl_dev,
+         'lateral_vel':None}
+    # speed 
+    if vel is not None:
+        vel = np.array(vel)
+        projection = np.sum(line_vector2 * vel, axis=-1)/np.sum(line_vector2 * line_vector2, axis=-1)
+        projection = line_vector2 * projection[:,:,np.newaxis]
+        lateral_vel = np.linalg.norm(vel - projection,axis=2)
+        opt['lateral_vel'] = np.mean(lateral_vel,axis=-1)
+
+
+
+
+    return sign*max_laterl_dev, init, endp, opt
 

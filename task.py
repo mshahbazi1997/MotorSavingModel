@@ -114,6 +114,7 @@ class CentreOutFF(mn.environment.Environment):
     
     info = {
       "states": self.states,
+      "endpoint_load": self.endpoint_load,
       "action": action,
       "noisy action": action,  # no noise here so it is the same
       "goal": self.goal,
@@ -151,8 +152,12 @@ class CentreOutFF(mn.environment.Environment):
       projection = line_vector * projection[:,None]
 
       err = xy - projection
+
+      projection = th.sum(line_vector * vel, axis=-1)/th.sum(line_vector * line_vector, axis=-1)
+      projection = line_vector * projection[:,None]
+      err_d = vel - projection
       
-      F = -1*(self.B*err+self.K*vel)
+      F = -1*(self.B*err+self.K*err_d)
       self.endpoint_load = F
 
     else:
@@ -160,8 +165,10 @@ class CentreOutFF(mn.environment.Environment):
       # set endpoint load to zero before go cue
       self.endpoint_load = self.ff_coefficient * (vel@FF_matvel.T)
 
-    mask = self.elapsed < self.go_cue_time
-    self.endpoint_load[mask] = 0
+      mask = self.elapsed < self.go_cue_time
+      self.endpoint_load[mask] = 0
+    
+    #self.effector.step(noisy_action,endpoint_load=self.endpoint_load) # **kwargs
 
     # specify go cue time
     mask = self.elapsed >= (self.go_cue_time + (self.vision_delay-1) * self.dt)
@@ -173,6 +180,7 @@ class CentreOutFF(mn.environment.Environment):
     terminated = bool(self.elapsed >= self.max_ep_duration)
     info = {
       "states": self.states,
+      "endpoint_load": self.endpoint_load,
       "action": action,
       "noisy action": noisy_action,
       "goal": self.goal * self.go_cue + self.init * (1-self.go_cue), # update the target depending on the go cue

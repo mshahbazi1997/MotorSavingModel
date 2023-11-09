@@ -60,10 +60,10 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
     # Run episode
-    xy, tg, vel, all_hidden, all_muscle, all_force = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
+    data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
 
     # calculate losses
-    loss, _, muscle_loss, hidden_loss, _, _ = cal_loss(xy, tg, vel, all_hidden, all_muscle, all_force, env.muscle.max_iso_force, env.dt, policy, test=False)
+    loss, _, muscle_loss, hidden_loss, _, _ = cal_loss(data, env.muscle.max_iso_force, env.dt, policy, test=False)
     
     # backward pass & update weights
     optimizer.zero_grad() 
@@ -73,10 +73,10 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
 
     # TEST
     # Run episode
-    xy, tg, vel, all_hidden, all_muscle, all_force = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,detach=True)
+    data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,detach=True)
 
     # calculate losses
-    _, position_loss, _, _, angle_loss, lateral_loss = cal_loss(xy, tg, vel, all_hidden, all_muscle, all_force, env.muscle.max_iso_force, env.dt, policy, test=True)
+    _, position_loss, _, _, angle_loss, lateral_loss = cal_loss(data, env.muscle.max_iso_force, env.dt, policy, test=True)
 
 
     # Update loss values in the dictionary
@@ -126,38 +126,38 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1):
   
   
   # Run episode
-  xy, tg, vel, all_hidden, all_muscle, all_force = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True)
+  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True)
   
 
-  return xy, tg, vel, all_hidden, all_muscle, all_force
+  return data
 
 
-def cal_loss(xy, tg, vel, all_hidden, all_muscle, all_force, max_iso_force, dt, policy, test=False):
+def cal_loss(data, max_iso_force, dt, policy, test=False):
 
   # calculate losses
   # input_loss
   input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
   # muscle_loss
   max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
-  y = all_muscle * max_iso_force_n
+  y = data['all_muscle'] * max_iso_force_n
   muscle_loss = th.mean(th.square(y))
   # hidden_loss
-  y = all_hidden
+  y = data['all_hidden']
   dy = th.diff(y,axis=1)/dt
   hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
   # position_loss
-  position_loss = th.mean(th.sum(th.abs(xy-tg), dim=-1))
+  position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
   # recurrent_loss
-  recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
+  #recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
 
-  loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
+  loss = 1e-6*input_loss + 20*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
 
   # Jon's proposed loss function
-  # position_loss = th.mean(th.sum(th.abs(xy-tg), dim=-1))
-  # muscle_loss = th.mean(th.sum(th.square(all_force), dim=-1))
-  # muscle_loss = th.mean(th.sum(all_force, dim=-1))
-  # hidden_loss = th.mean(th.sum(th.square(all_hidden), dim=-1))
-  # diff_loss =  th.mean(th.sum(th.square(th.diff(all_hidden, 1, dim=1)), dim=-1))
+  # position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
+  # muscle_loss = th.mean(th.sum(th.square(data['all_force']), dim=-1))
+  # muscle_loss = th.mean(th.sum(data['all_force'], dim=-1))
+  # hidden_loss = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
+  # diff_loss =  th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
 
   # loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
   #loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 1e-1*diff_loss
@@ -165,10 +165,9 @@ def cal_loss(xy, tg, vel, all_hidden, all_muscle, all_force, max_iso_force, dt, 
   angle_loss = None
   lateral_loss = None
   if test:
-    angle_loss = np.mean(calculate_angles_between_vectors(vel, tg, xy))
-    lateral_loss, _, _ = calculate_lateral_deviation(xy, tg)
+    angle_loss = np.mean(calculate_angles_between_vectors(data['vel'], data['tg'], data['xy']))
+    lateral_loss, _, _, _ = calculate_lateral_deviation(data['xy'], data['tg'])
     lateral_loss = np.mean(lateral_loss)
-
 
   return loss, position_loss, muscle_loss, hidden_loss, angle_loss, lateral_loss
 
@@ -179,38 +178,43 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',f
   obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, is_channel=is_channel,K=K,B=B)
   terminated = False
 
-  xy, tg, vel, all_actions, all_hidden, all_muscle, all_force = [], [], [], [], [], [], []
+  # Initialize a dictionary to store lists
+  data = {
+      'xy': [],
+      'tg': [],
+      'vel': [],
+      'all_actions': [],
+      'all_hidden': [],
+      'all_muscle': [],
+      'all_force': [],
+      'all_endpoint': [],
+  }
 
   while not terminated:
-      all_hidden.append(h[0, :, None, :])
+      # Append data to respective lists
+      data['all_hidden'].append(h[0, :, None, :])
+      data['all_muscle'].append(info['states']['muscle'][:, 0, None, :])
+      data['all_endpoint'].append(info['endpoint_load'][:, None, :])
 
       action, h = policy(obs, h)
       obs, _, terminated, _, info = env.step(action=action)
 
-      xy.append(info["states"]["fingertip"][:,None,:])
-      tg.append(info["goal"][:, None, :])
-      vel.append(info["states"]["cartesian"][:,None,2:]) # velocity
-      all_actions.append(action[:, None, :])
-      all_muscle.append(info['states']['muscle'][:, 0, None, :])
-      all_force.append(info['states']['muscle'][:, 6, None, :])
+      data['xy'].append(info["states"]["fingertip"][:, None, :])
+      data['tg'].append(info["goal"][:, None, :])
+      data['vel'].append(info["states"]["cartesian"][:, None, 2:])  # velocity
+      data['all_actions'].append(action[:, None, :])
+      data['all_force'].append(info['states']['muscle'][:, 6, None, :])
 
-  xy = th.cat(xy, axis=1)
-  tg = th.cat(tg, axis=1)
-  vel = th.cat(vel, axis=1)
-  all_actions = th.cat(all_actions, axis=1)
-  all_muscle = th.cat(all_muscle, axis=1)
-  all_hidden = th.cat(all_hidden, axis=1)
-  all_force = th.cat(all_force, axis=1)
+  # Concatenate the lists
+  for key in data:
+      data[key] = th.cat(data[key], axis=1)
+
   if detach:
-    xy = th.detach(xy)
-    tg = th.detach(tg)
-    vel = th.detach(vel)
-    all_actions = th.detach(all_actions)
-    all_muscle = th.detach(all_muscle)
-    all_hidden = th.detach(all_hidden)
-    all_force = th.detach(all_force)
+      # Detach tensors if needed
+      for key in data:
+          data[key] = th.detach(data[key])
 
-  return xy, tg, vel, all_hidden, all_muscle, all_force
+  return data
 
 
 if __name__ == "__main__":
