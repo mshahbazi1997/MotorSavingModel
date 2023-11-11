@@ -135,31 +135,31 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1):
 def cal_loss(data, max_iso_force, dt, policy, test=False):
 
   # calculate losses
-  # input_loss
-  input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
-  # muscle_loss
-  max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
-  y = data['all_muscle'] * max_iso_force_n
-  muscle_loss = th.mean(th.square(y))
-  # hidden_loss
-  y = data['all_hidden']
-  dy = th.diff(y,axis=1)/dt
-  hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
-  # position_loss
-  position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
-  # recurrent_loss
-  #recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
+  # # input_loss
+  # input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
+  # # muscle_loss
+  # max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
+  # y = data['all_muscle'] * max_iso_force_n
+  # muscle_loss = th.mean(th.square(y))
+  # # hidden_loss
+  # y = data['all_hidden']
+  # dy = th.diff(y,axis=1)/dt
+  # hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
+  # # position_loss
+  # position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
+  # # recurrent_loss
+  # #recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
 
-  loss = 1e-6*input_loss + 20*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
+  # loss = 1e-6*input_loss + 20*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
 
   # Jon's proposed loss function
-  # position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
-  # muscle_loss = th.mean(th.sum(th.square(data['all_force']), dim=-1))
-  # muscle_loss = th.mean(th.sum(data['all_force'], dim=-1))
-  # hidden_loss = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
-  # diff_loss =  th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
+  position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
+  #muscle_loss = th.mean(th.sum(th.square(data['all_force']), dim=-1))
+  muscle_loss = th.mean(th.sum(data['all_force'], dim=-1))
+  hidden_loss = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
+  diff_loss =  th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
 
-  # loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
+  loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
   #loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 1e-1*diff_loss
 
   angle_loss = None
