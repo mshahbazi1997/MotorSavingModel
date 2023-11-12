@@ -154,12 +154,11 @@ def cal_loss(data, max_iso_force, dt, policy, test=False):
 
   # Jon's proposed loss function
   position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
-  #muscle_loss = th.mean(th.sum(th.square(data['all_force']), dim=-1))
   muscle_loss = th.mean(th.sum(data['all_force'], dim=-1))
   hidden_loss = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
   diff_loss =  th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
 
-  loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
+  loss = position_loss + 1e-3*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss
   #loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 1e-1*diff_loss
 
   angle_loss = None
