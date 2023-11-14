@@ -255,19 +255,19 @@ if __name__ == "__main__":
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
           # pretraining the network using ADAM
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=10000,directory_name=directory_name) 
-                                                     for iteration in these_iters)
+          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=10000,directory_name=directory_name) 
+          #                                           for iteration in these_iters)
           # NF1
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=500,directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF1
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=3000,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=5000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           # NF2
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF2',n_batch=500,directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF2',n_batch=3000,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF2',n_batch=5000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           
     else: ## training networks for each phase separately
