@@ -62,11 +62,11 @@ def plot_simulations(xy, target_xy, plot_lat=True, vel=None,figsize=(8,6)):
     
     return fig, ax
 
-def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),init_phase=1,loss_type='position_loss'):
-    position_loss_NF1 = []
-    position_loss_FF1 = []
-    position_loss_NF2 = []
-    position_loss_FF2 = []
+def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),loss_type='position_loss'):
+    loss_NF1 = []
+    loss_FF1 = []
+    loss_NF2 = []
+    loss_FF2 = []
 
     # Loop through each model
     for m in range(num_model):
@@ -74,10 +74,10 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),init_phase=1,loss_
         model_name = "model{:02d}".format(m)
 
 
-        log_NF1 = list(Path(data_dir).glob(f'{model_name}_phase={init_phase}_*_log.json'))[0]
-        log_FF1 = list(Path(data_dir).glob(f'{model_name}_phase={init_phase+1}_*_log.json'))[0]
-        log_NF2 = list(Path(data_dir).glob(f'{model_name}_phase={init_phase+2}_*_log.json'))[0]
-        log_FF2 = list(Path(data_dir).glob(f'{model_name}_phase={init_phase+3}_*_log.json'))[0]
+        log_NF1 = list(Path(data_dir).glob(f'{model_name}_phase=NF1_*_log.json'))[0]
+        log_FF1 = list(Path(data_dir).glob(f'{model_name}_phase=FF1_*_log.json'))[0]
+        log_NF2 = list(Path(data_dir).glob(f'{model_name}_phase=NF2_*_log.json'))[0]
+        log_FF2 = list(Path(data_dir).glob(f'{model_name}_phase=FF2_*_log.json'))[0]
         
         log_NF1 = json.load(open(log_NF1,'r'))
         log_FF1 = json.load(open(log_FF1,'r'))
@@ -85,23 +85,23 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),init_phase=1,loss_
         log_FF2 = json.load(open(log_FF2,'r'))
         
         # Append data for each model
-        position_loss_NF1.append(log_NF1[loss_type])
-        position_loss_FF1.append(log_FF1[loss_type])
-        position_loss_NF2.append(log_NF2[loss_type])
-        position_loss_FF2.append(log_FF2[loss_type])
+        loss_NF1.append(log_NF1[loss_type])
+        loss_FF1.append(log_FF1[loss_type])
+        loss_NF2.append(log_NF2[loss_type])
+        loss_FF2.append(log_FF2[loss_type])
 
 
     # Calculate window averages for all models
     if w<=1:
-        NF1w = position_loss_NF1
-        FF1w = position_loss_FF1
-        NF2w = position_loss_NF2
-        FF2w = position_loss_FF2
+        NF1w = loss_NF1
+        FF1w = loss_FF1
+        NF2w = loss_NF2
+        FF2w = loss_FF2
     else:
-        NF1w = [window_average(np.array(loss), w) for loss in position_loss_NF1]
-        FF1w = [window_average(np.array(loss), w) for loss in position_loss_FF1]
-        NF2w = [window_average(np.array(loss), w) for loss in position_loss_NF2]
-        FF2w = [window_average(np.array(loss), w) for loss in position_loss_FF2]
+        NF1w = [window_average(np.array(loss), w) for loss in loss_NF1]
+        FF1w = [window_average(np.array(loss), w) for loss in loss_FF1]
+        NF2w = [window_average(np.array(loss), w) for loss in loss_NF2]
+        FF2w = [window_average(np.array(loss), w) for loss in loss_FF2]
 
 
     # Calculate the mean and standard deviation across models
