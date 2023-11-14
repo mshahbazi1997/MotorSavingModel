@@ -27,7 +27,7 @@ def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
     return fig, ax
 
 
-def plot_simulations(xy, target_xy, vel=None,figsize=(5,3)):
+def plot_simulations(xy, target_xy, plot_lat=True, vel=None,figsize=(8,6)):
     target_x = target_xy[:, -1, 0]
     target_y = target_xy[:, -1, 1]
 
@@ -41,9 +41,10 @@ def plot_simulations(xy, target_xy, vel=None,figsize=(5,3)):
     ax.scatter(target_x, target_y)
 
     # plot lateral deviation line
-    _, init, endp, _ = calculate_lateral_deviation(xy, target_xy)
-    for i in range(8):
-        ax.plot([init[i, 0], endp[i, 0]], [init[i, 1], endp[i, 1]], color='b', alpha=1, linewidth=0.5,linestyle='-')
+    if plot_lat:
+        _, init, endp, _ = calculate_lateral_deviation(xy, target_xy)
+        for i in range(8):
+            ax.plot([init[i, 0], endp[i, 0]], [init[i, 1], endp[i, 1]], color='b', alpha=1, linewidth=0.5,linestyle='-')
 
 
     if vel is not None:
@@ -188,3 +189,16 @@ def plot_traj(X_latent_list, plot_scatter=1, marker=['x','o'],alpha=[1,0.5], whi
 
     return fig, ax
 
+def plot_force(endpoint1,endpoint2):
+    fg, ax = plt.subplots(nrows=8,ncols=1,figsize=(10,10))
+
+    x = np.linspace(0, 1, 100)
+
+    for i in range(8):
+        
+        ax[i].plot(x,np.linalg.norm(endpoint1[i,:,:],axis=1),color='red',label='noFF')
+        ax[i].plot(x,np.linalg.norm(endpoint2[i,:,:],axis=1),color='blue',label='noFF')
+        
+        ax[i].set_ylabel('Force [N]')
+        ax[i].set_xlabel('Time [s]')
+    return fg, ax

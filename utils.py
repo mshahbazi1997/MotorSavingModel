@@ -33,7 +33,7 @@ def load_env(task,cfg=None):
         action_noise         = 1e-4
         proprioception_noise = 1e-3
         vision_noise         = 1e-4
-        vision_delay         = 0.05
+        vision_delay         = 0.07
         proprioception_delay = 0.02
 
         # Define task and the effector

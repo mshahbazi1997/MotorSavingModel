@@ -79,7 +79,8 @@ class CentreOutFF(mn.environment.Environment):
       self.goal = goal if self.differentiable else self.detach(goal)
 
       # specify go cue time
-      go_cue_time = np.tile((self.go_cue_range[0]+self.go_cue_range[1])/2,batch_size)
+      #go_cue_time = np.tile((self.go_cue_range[0]+self.go_cue_range[1])/2,batch_size)
+      go_cue_time = np.tile(0.1,batch_size)
       self.go_cue_time = go_cue_time
       
     self.effector.reset(options={"batch_size": batch_size,"joint_state": joint_state})
