@@ -75,7 +75,7 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),loss_type='positio
 
 
         log_NF1 = list(Path(data_dir).glob(f'{model_name}_phase=NF1_*_log.json'))[0]
-        log_FF1 = list(Path(data_dir).glob(f'{model_name}_phase=FF1_*_log.json'))[0]
+        log_FF1 = list(Path(data_dir).glob(f'{model_name}_phase=FF1_FFCoef=8_log.json'))[0]
         log_NF2 = list(Path(data_dir).glob(f'{model_name}_phase=NF2_*_log.json'))[0]
         log_FF2 = list(Path(data_dir).glob(f'{model_name}_phase=FF2_*_log.json'))[0]
         

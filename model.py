@@ -45,7 +45,7 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
     policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, freeze_output_layer=True)
     policy.load_state_dict(th.load(weight_file))
 
-    optimizer = th.optim.SGD(policy.parameters(), lr=0.01)
+    optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
     batch_size = 200
 
 
