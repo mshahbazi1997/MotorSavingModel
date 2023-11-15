@@ -189,16 +189,27 @@ def plot_traj(X_latent_list, plot_scatter=1, marker=['x','o'],alpha=[1,0.5], whi
 
     return fig, ax
 
-def plot_force(endpoint1,endpoint2):
-    fg, ax = plt.subplots(nrows=8,ncols=1,figsize=(10,10))
+def plot_force(data1,data2=None):
+    fg, ax = plt.subplots(nrows=8,ncols=1,figsize=(10,15))
 
     x = np.linspace(0, 1, 100)
 
     for i in range(8):
         
-        ax[i].plot(x,np.linalg.norm(endpoint1[i,:,:],axis=1),color='red',label='noFF')
-        ax[i].plot(x,np.linalg.norm(endpoint2[i,:,:],axis=1),color='blue',label='noFF')
+        ax[i].plot(x,np.linalg.norm(data1['all_endpoint'][i,:,:],axis=1),color='red',label='noFF')
+        ax[i].plot(x,10*np.linalg.norm(data1['vel'][i,:,:],axis=1),color='red',label='velnoFF',alpha=0.3,linestyle='--')
+        #ax[i].axvline(x=T.pressTime[i], color='k')
+        if data2 is not None:
+            ax[i].plot(x,np.linalg.norm(data2['all_endpoint'][i,:,:],axis=1),color='blue',label='FF')
+            ax[i].plot(x,10*np.linalg.norm(data2['vel'][i,:,:],axis=1),color='blue',label='velFF',alpha=0.3,linestyle='--')
         
+        ax[i].axhline(y=00, color='k')
+
         ax[i].set_ylabel('Force [N]')
-        ax[i].set_xlabel('Time [s]')
+        ax[i].set_ylim([-1,7])
+        if i==7:
+            ax[i].set_xlabel('Time [s]')
+        ax[i].legend()
     return fg, ax
+
+

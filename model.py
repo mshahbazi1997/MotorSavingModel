@@ -45,8 +45,8 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
     policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, freeze_output_layer=True)
     policy.load_state_dict(th.load(weight_file))
 
-    optimizer = th.optim.SGD(policy.parameters(), lr=0.001)
-    batch_size = 1024
+    optimizer = th.optim.SGD(policy.parameters(), lr=0.01)
+    batch_size = 200
 
 
   losses = {
@@ -58,7 +58,7 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
     'hidden': []}
   
   
-  for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
+  for batch in range(n_batch):#tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
     # Run episode
     data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
@@ -89,8 +89,8 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
     losses['hidden'].append(hidden_loss.item())
 
     # print progress
-    #if (batch % interval == 0) and (batch != 0):
-    #  print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
+    if (batch % interval == 0) and (batch != 0):
+      print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
 
   # save weights and losses
   weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
@@ -161,7 +161,7 @@ def cal_loss(data, max_iso_force, dt, policy, test=False):
   diff_loss =  th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
   
 
-  loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss + 1e-4*m_diff_loss
+  loss = position_loss + 1e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss + 1e-4*m_diff_loss
   #loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 1e-1*diff_loss
 
   # Mehrdad's proposed loss function

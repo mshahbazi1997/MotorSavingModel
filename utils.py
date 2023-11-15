@@ -2,6 +2,10 @@ import os
 import datetime
 import motornet as mn
 import numpy as np
+from scipy.optimize import minimize
+
+
+
 
 def create_directory(directory_name=None):
     if directory_name is None:
@@ -166,4 +170,24 @@ def calculate_lateral_deviation(xy, tg, vel=None):
 
 
     return sign*max_laterl_dev, init, endp, opt
+
+def optimize_channel(cfg_file,weight_file):
+
+    def lat_loss(theta):
+        from model import test
+        data = test(cfg_file,weight_file,is_channel=True,K=theta[0],B=theta[1])
+        _, _, _, opt = calculate_lateral_deviation(data['xy'], data['tg'], data['vel'])
+        return np.mean(opt['max_lateral_dev'])
+
+    # find K and B such that max lateral deviation is minimized...
+    loss_before = lat_loss([0,0])
+
+    theta0 = [180,-2]
+    theta = minimize(lat_loss,theta0,method='Nelder-Mead',options={'maxiter':10000,'disp':False})
+    loss_after = lat_loss(theta.x)
+
+    print(f'loss before: {loss_before}')
+    print(f'loss after: {loss_after}')
+
+    return theta.x
 
