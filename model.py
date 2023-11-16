@@ -153,7 +153,7 @@ def cal_loss(data, max_iso_force, dt, policy, test=False):
 
   # loss = 1e-6*input_loss + 20*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
 
-  # Jon's proposed loss function
+  # Jon's proposed loss function - this one is good enough
   position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
   muscle_loss = th.mean(th.sum(data['all_force'], dim=-1))
   m_diff_loss = th.mean(th.sum(th.square(th.diff(data['all_force'], 1, dim=1)), dim=-1))
@@ -162,7 +162,6 @@ def cal_loss(data, max_iso_force, dt, policy, test=False):
   
 
   loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss + 1e-4*m_diff_loss
-  #loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 1e-1*diff_loss
 
   # Mehrdad's proposed loss function
   # policy.loss_act = 0
@@ -258,16 +257,16 @@ if __name__ == "__main__":
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=20000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           # NF1
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=500,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=3000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF1
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=7000,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=20000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           # NF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF2',n_batch=2000,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF2',n_batch=20000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF2',n_batch=7000,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF2',n_batch=20000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           
     else: ## training networks for each phase separately
