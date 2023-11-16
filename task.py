@@ -166,8 +166,8 @@ class CentreOutFF(mn.environment.Environment):
       # set endpoint load to zero before go cue
       self.endpoint_load = self.ff_coefficient * (vel@FF_matvel.T)
 
-      mask = self.elapsed < self.go_cue_time
-      self.endpoint_load[mask] = 0
+    mask = self.elapsed < self.go_cue_time
+    self.endpoint_load[mask] = 0
     
     #self.effector.step(noisy_action,endpoint_load=self.endpoint_load) # **kwargs
 

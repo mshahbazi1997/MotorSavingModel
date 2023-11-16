@@ -52,6 +52,7 @@ def load_env(task,cfg=None):
         muscle = getattr(mn.muscle,muscle_name)()
         effector = mn.effector.RigidTendonArm26(muscle=muscle,timestep=timestep) 
 
+
         # delay
         proprioception_delay = cfg['proprioception_delay']*cfg['dt']
         vision_delay = cfg['vision_delay']*cfg['dt']
