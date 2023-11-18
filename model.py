@@ -34,7 +34,7 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
 
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
     batch_size = 128
-    batch_size = 512
+    # batch_size = 512
 
   else:
     phase_prev = 'growing_up' if phase not in all_phase else all_phase[all_phase.tolist().index(phase) - 1]
@@ -137,54 +137,34 @@ def cal_loss(data, max_iso_force, dt, policy, test=False):
 
   # calculate losses
   # # input_loss
-  # input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
+  input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
   # # muscle_loss
-  # max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
-  # y = data['all_muscle'] * max_iso_force_n
-  # muscle_loss = th.mean(th.square(y))
+  max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
+  y = data['all_muscle'] * max_iso_force_n
+  dy = th.diff(y,axis=1)/dt
+  muscle_loss = th.mean(th.square(y))+0.02*th.mean(th.square(dy))
   # # hidden_loss
-  # y = data['all_hidden']
-  # dy = th.diff(y,axis=1)/dt
-  # hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
+  y = data['all_hidden']
+  dy = th.diff(y,axis=1)/dt
+  hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
   # # position_loss
-  # position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
+  position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
   # # recurrent_loss
-  # #recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
+  #recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
 
-  # loss = 1e-6*input_loss + 20*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
+  loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
 
   # Jon's proposed loss function - this one is good enough
-  position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
-  muscle_loss = th.mean(th.sum(data['all_force'], dim=-1))
-  m_diff_loss = th.mean(th.sum(th.square(th.diff(data['all_force'], 1, dim=1)), dim=-1))
-  hidden_loss = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
-  diff_loss =  th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
+  #position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
+  #muscle_loss = th.mean(th.sum(data['all_force'], dim=-1))
+  #m_diff_loss = th.mean(th.sum(th.square(th.diff(data['all_force'], 1, dim=1)), dim=-1))
+  #hidden_loss = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
+  #diff_loss =  th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
   
 
   #loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss + 1e-4*m_diff_loss # this one works very nicely
-  loss = position_loss + 1e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss + 1e-4*m_diff_loss
+  #loss = position_loss + 1e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss + 1e-4*m_diff_loss
 
-  # Mehrdad's proposed loss function
-  # policy.loss_act = 0
-  # policy.loss_force = 1e-4
-  # policy.loss_hdn = 1e-2
-  # policy.loss_speed = 0
-  # policy.loss_hdn_diff = 1e-1
-  # policy.loss_weight_decay = 1e-7
-  # policy.loss_weight_sparsity = 0
-
-  # position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
-  # muscle_loss = th.mean(th.sum(data['all_force'], axis=-1))
-  # hidden_loss = th.mean(th.sum(th.pow(data['all_hidden'],2),-1))
-  
-  # loss =  position_loss+\
-  #   policy.loss_act * th.mean(th.sum(th.pow(data['all_muscle'],2), axis=-1)) + \
-  #   policy.loss_force * muscle_loss + \
-  #   policy.loss_hdn * hidden_loss + \
-  #   policy.loss_hdn_diff * th.mean(th.sum(th.pow(th.diff(data['all_hidden'],axis=1),2),-1)) + \
-  #   policy.loss_weight_sparsity * th.norm(list(policy.parameters())[0],1) + \
-  #   policy.loss_weight_decay * th.norm(list(policy.parameters())[1], 2) + \
-  #   policy.loss_speed * th.mean(th.sum(th.pow(data['vel'],2), axis=-1))
 
   angle_loss = None
   lateral_loss = None
@@ -255,8 +235,8 @@ if __name__ == "__main__":
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
           # pretraining the network using ADAM
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=20000,directory_name=directory_name) 
-                                                     for iteration in these_iters)
+          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=20000,directory_name=directory_name) 
+          #                                           for iteration in these_iters)
           # NF1
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=3000,directory_name=directory_name) 
                                                      for iteration in these_iters)
