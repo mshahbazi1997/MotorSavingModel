@@ -106,7 +106,7 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
   print("Done...")
 
 
-def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1):
+def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=None):
   device = th.device("cpu")
 
   # load configuration
@@ -116,7 +116,7 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1):
     ff_coefficient=cfg['ff_coefficient']
     
   # environment and network
-  env = load_env(CentreOutFF, cfg)
+  env = load_env(CentreOutFF, cfg, dT=dT)
   w = th.load(weight_file)
   num_hidden = int(w['gru.weight_ih_l0'].shape[0]/3)
   if 'h0' in w.keys():

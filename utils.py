@@ -28,7 +28,7 @@ def create_directory(directory_name=None):
     # Return the created directory's name (whether it was newly created or already existed)
     return directory_path
 
-def load_env(task,cfg=None):
+def load_env(task,cfg=None,dT=None):
 
     if cfg is None:
 
@@ -49,7 +49,10 @@ def load_env(task,cfg=None):
         # effector
         muscle_name = cfg['effector']['muscle']['name']
         #timestep = cfg['effector']['dt']
-        timestep = 0.002
+        if dT is None:
+            timestep = cfg['dt']
+        else:
+            timestep = dT
         cfg['dt'] = timestep
         muscle = getattr(mn.muscle,muscle_name)()
         effector = mn.effector.RigidTendonArm26(muscle=muscle,timestep=timestep) 
