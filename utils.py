@@ -48,7 +48,9 @@ def load_env(task,cfg=None):
         name = cfg['name']
         # effector
         muscle_name = cfg['effector']['muscle']['name']
-        timestep = cfg['effector']['dt']
+        #timestep = cfg['effector']['dt']
+        timestep = 0.002
+        cfg['dt'] = timestep
         muscle = getattr(mn.muscle,muscle_name)()
         effector = mn.effector.RigidTendonArm26(muscle=muscle,timestep=timestep) 
 

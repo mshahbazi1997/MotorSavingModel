@@ -27,11 +27,10 @@ def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
     return fig, ax
 
 
-def plot_simulations(xy, target_xy, plot_lat=True, vel=None,figsize=(8,6)):
+def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
     target_x = target_xy[:, -1, 0]
     target_y = target_xy[:, -1, 1]
 
-    fig, ax = plt.subplots(figsize=figsize)
     ax.set_ylim([0.3, 0.65])
     ax.set_xlim([-0.3, 0.])
 
@@ -39,6 +38,10 @@ def plot_simulations(xy, target_xy, plot_lat=True, vel=None,figsize=(8,6)):
     plotor(axis=ax, cart_results=xy)
 
     ax.scatter(target_x, target_y)
+
+    # plot the line the connect initial and final positions
+    for i in range(8):
+        ax.plot([xy[i, 0, 0], target_xy[i, -1, 0]], [xy[i, 0, 1], target_xy[i, -1, 1]], color='k', alpha=0.2, linewidth=0.5,linestyle='--')
 
     # plot lateral deviation line
     if plot_lat:
@@ -48,10 +51,7 @@ def plot_simulations(xy, target_xy, plot_lat=True, vel=None,figsize=(8,6)):
 
 
     if vel is not None:
-        # plot the line the connect initial and final positions
-        for i in range(8):
-            ax.plot([xy[i, 0, 0], target_xy[i, -1, 0]], [xy[i, 0, 1], target_xy[i, -1, 1]], color='k', alpha=0.2, linewidth=0.5,linestyle='--')
-
+        
         # plot the line that connect initial and peak velocity positions
         vel_norm = np.linalg.norm(vel, axis=-1)
         idx = np.argmax(vel_norm, axis=1)
@@ -60,9 +60,8 @@ def plot_simulations(xy, target_xy, plot_lat=True, vel=None,figsize=(8,6)):
         for i in range(8):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
-    return fig, ax
 
-def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),loss_type='position_loss'):
+def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),loss_type='position'):
     loss_NF1 = []
     loss_FF1 = []
     loss_NF2 = []
@@ -137,8 +136,13 @@ def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),loss_type='positio
     ax[1].plot(FF2_mean,'r-',label='FF2')
     ax[1].legend()
 
+    ax[0].set_ylabel(loss_type)
+    ax[1].set_ylabel(loss_type)
 
+    ax[0].axhline(y=np.mean(NF1_mean[:-10]), color='k', linestyle='--', linewidth=1)
     return fig, ax
+
+
 
 def plot_activation(all_hidden, all_muscles):
     fg, ax = plt.subplots(nrows=8,ncols=2,figsize=(10,20))
@@ -194,7 +198,7 @@ def plot_force(data,label):
 
     color_list = ['r','b','g','c','m','y','k','orange']
 
-    x = np.linspace(0, 1, 100)
+    x = np.linspace(0, 1, np.shape(data[0]['all_endpoint'])[1])
 
     for i in range(8):
         
@@ -210,5 +214,6 @@ def plot_force(data,label):
             ax[i].set_xlabel('Time [s]')
         ax[i].legend()
     return fg, ax
+
 
 
