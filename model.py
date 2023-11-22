@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 
 
-def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
+def train(model_num,ff_coefficient,phase,n_batch=50000,directory_name=None,loss_weight=None):
 
   device = th.device("cpu")
   interval = 1000
@@ -34,7 +34,6 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
 
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
     batch_size = 128
-    # batch_size = 512
 
   else:
     phase_prev = 'growing_up' if phase not in all_phase else all_phase[all_phase.tolist().index(phase) - 1]
@@ -48,6 +47,7 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
     optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
     batch_size = 200
 
+    
 
   losses = {
     'overall': [],
@@ -64,11 +64,11 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
     data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
 
     # calculate losses
-    loss, _, muscle_loss, hidden_loss, _, _ = cal_loss(data, env.muscle.max_iso_force, env.dt, policy, test=False)
-    
+    #loss_train = cal_loss(data, env.muscle.max_iso_force, env.dt, policy, test=False,loss_weight=loss_weight)
+    loss_train = cal_loss(data, test=False, loss_weight=loss_weight)
     # backward pass & update weights
     optimizer.zero_grad() 
-    loss.backward()
+    loss_train['overall'].backward()
     th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)  # important!
     optimizer.step()
 
@@ -77,16 +77,17 @@ def train(model_num,ff_coefficient,phase,n_batch=10000,directory_name=None):
     data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,detach=True)
 
     # calculate losses
-    _, position_loss, _, _, angle_loss, lateral_loss = cal_loss(data, env.muscle.max_iso_force, env.dt, policy, test=True)
+    #loss_test = cal_loss(data, env.muscle.max_iso_force, env.dt, policy, test=True,loss_weight=loss_weight)
+    loss_test = cal_loss(data,test=True,loss_weight=loss_weight)
 
 
     # Update loss values in the dictionary
-    losses['overall'].append(loss.item())
-    losses['position'].append(position_loss.item())
-    losses['angle'].append(angle_loss.item())
-    losses['lateral'].append(lateral_loss.item())
-    losses['muscle'].append(muscle_loss.item())
-    losses['hidden'].append(hidden_loss.item())
+    losses['overall'].append(loss_train['overall'].item())
+    losses['position'].append(loss_test['position'].item())
+    losses['angle'].append(loss_test['angle'].item())
+    losses['lateral'].append(loss_test['lateral'].item())
+    losses['muscle'].append(loss_train['muscle'].item())
+    losses['hidden'].append(loss_train['hidden'].item())
 
     # print progress
     if (batch % interval == 0) and (batch != 0):
@@ -133,48 +134,101 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=N
   return data
 
 
-def cal_loss(data, max_iso_force, dt, policy, test=False):
+def cal_loss(data, loss_weight=None, test=False):
+  # data, max_iso_force, dt, policy, loss_weight=None, test=False
+
+  loss = {
+    'overall': None,
+    'position': None,
+    'angle': None,
+    'lateral': None,
+    'muscle': None,
+    'hidden': None,
+    'jerk': None,
+    'input': None,
+    'recurrent': None,
+    'muscle_derivative': None,
+    'hidden_derivative': None}
 
   # calculate losses
+
   # # input_loss
-  input_loss = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
-  # # muscle_loss
-  max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
-  y = data['all_muscle'] * max_iso_force_n
-  dy = th.diff(y,axis=1)/dt
-  muscle_loss = th.mean(th.square(y))+0.02*th.mean(th.square(dy))
-  # # hidden_loss
-  y = data['all_hidden']
-  dy = th.diff(y,axis=1)/dt
-  hidden_loss = th.mean(th.square(y))+0.05*th.mean(th.square(dy))
-  # # position_loss
-  position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
+  # loss['input'] = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
   # # recurrent_loss
-  #recurrent_loss = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
+  # loss['recurrent'] = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
 
-  loss = 1e-6*input_loss + 5*muscle_loss + 0.1*hidden_loss + 2*position_loss #+ 1e-5*recurrent_loss
+  # # muscle_loss
+  # max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
+  # y = data['all_muscle'] * max_iso_force_n
+  # loss['muscle'] = th.mean(th.square(y))
 
-  # Jon's proposed loss function - this one is good enough
-  #position_loss = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
-  #muscle_loss = th.mean(th.sum(data['all_force'], dim=-1))
-  #m_diff_loss = th.mean(th.sum(th.square(th.diff(data['all_force'], 1, dim=1)), dim=-1))
-  #hidden_loss = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
-  #diff_loss =  th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
+  # # muscle derivative loss
+  # dy = th.diff(y,axis=1)/dt
+  # loss['muscle_derivative'] = th.mean(th.square(dy))
+
+  # # hidden_loss
+  # y = data['all_hidden']
+  # loss['hidden'] = th.mean(th.square(y))
+
+  # # hidden derivative loss
+  # dy = th.diff(y,axis=1)/dt
+  # loss['hidden_derivative'] = th.mean(th.square(dy))
+
+  # # position_loss
+  # loss['position'] = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
+  
+  # # jerk_loss
+  # y = data['vel']
+  # dy = th.diff(y,dim=1)/dt
+  # d2y = th.diff(dy,dim=1)/dt
+  # loss['jerk'] = th.mean(th.sum(th.square(d2y), dim=-1))
+
+  # if loss_weight is None:
+  #    loss_weight = [1e-6, 5, 0.1, 0.1, 5e-3, 2, 1e-5, 1e-3]
+  
+  # loss['overall'] = \
+  #   loss_weight[0]*loss['input'] + \
+  #   loss_weight[1]*loss['muscle'] + \
+  #   loss_weight[2]*loss['muscle_derivative'] + \
+  #   loss_weight[3]*loss['hidden'] + \
+  #   loss_weight[4]*loss['hidden_derivative'] + \
+  #   loss_weight[5]*loss['position'] + \
+  #   loss_weight[6]*loss['recurrent'] + \
+  #   loss_weight[7]*loss['jerk']
   
 
-  #loss = position_loss + 1e-4*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss + 1e-4*m_diff_loss # this one works very nicely
-  #loss = position_loss + 1e-5*muscle_loss + 5e-5*hidden_loss + 3e-2*diff_loss + 1e-4*m_diff_loss
+  # Another loss version - this one is good enough (tend to produce slower movements)
+  
+  loss['position'] = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
+  loss['muscle'] = th.mean(th.sum(data['all_force'], dim=-1))
+  loss['muscle_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_force'], 1, dim=1)), dim=-1))
+  loss['hidden'] = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
+  loss['hidden_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
+  loss['jerk'] = th.mean(th.sum(th.square(th.diff(data['vel'],n=2,dim=1)), dim=-1))
+
+  if loss_weight is None:
+     #loss_weight = [1, 1e-4, 1e-4, 5e-5, 3e-2, 0] # this one works very nicely
+     # position, muscle, muscle_derivative, hidden, hidden_derivative, jerk
+     loss_weight = [1, 1e-4, 1e-4, 1e-5, 1e-2, 1e3] # Paul using this one
 
 
-  angle_loss = None
-  lateral_loss = None
+  loss['overall'] = \
+   loss_weight[0]*loss['position'] + \
+   loss_weight[1]*loss['muscle'] + \
+   loss_weight[2]*loss['muscle_derivative'] + \
+   loss_weight[3]*loss['hidden'] + \
+   loss_weight[4]*loss['hidden_derivative'] + \
+   loss_weight[5]*loss['jerk']
+
   if test:
-    angle_loss = np.mean(calculate_angles_between_vectors(data['vel'], data['tg'], data['xy']))
-    lateral_loss, _, _, _ = calculate_lateral_deviation(data['xy'], data['tg'])
-    lateral_loss = np.mean(lateral_loss)
+    # angle_loss
+    loss['angle'] = np.mean(calculate_angles_between_vectors(data['vel'], data['tg'], data['xy']))
 
-  return loss, position_loss, muscle_loss, hidden_loss, angle_loss, lateral_loss
+    # lateral_loss
+    out = calculate_lateral_deviation(data['xy'], data['tg'])
+    loss['lateral'] = np.mean(out[0])
 
+  return loss
 
 
 def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,K=1,B=-1,detach=False):
@@ -235,8 +289,8 @@ if __name__ == "__main__":
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
           # pretraining the network using ADAM
-          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=20000,directory_name=directory_name) 
-          #                                           for iteration in these_iters)
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=50000,directory_name=directory_name) 
+                                                     for iteration in these_iters)
           # NF1
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=3000,directory_name=directory_name) 
                                                      for iteration in these_iters)
@@ -256,13 +310,39 @@ if __name__ == "__main__":
       n_batch = int(sys.argv[4])
       directory_name = sys.argv[5]
 
-      iter_list = range(16)
-      n_jobs = 16
+      iter_list = range(22)
+      n_jobs = 22
+
+
+      loss_weight = np.array([[1, 1e-4, 1e-4, 5e-5, 3e-2, 0],
+                              [1, 1e-4, 1e-4, 1e-5, 1e-2, 1e3],
+                              [1, 1e-4, 1e-4, 1e-5, 1e-2, 1e4],
+                              [1, 1e-4, 1e-4, 1e-5, 1e-2, 1e5],
+                              [1, 1e-4, 1e-4, 1e-5, 1e-2, 1e2],
+                              [1, 1e-4, 1e-4, 1e-5, 1e-2, 1e1],
+                              [1, 1e-4, 1e-4, 1e-5, 1e-2, 1e-1],
+                              [1, 1e-4, 0, 1e-5, 1e-2, 1e3],
+                              [1, 1e-4, 0, 1e-5, 1e-2, 1e4],
+                              [1, 1e-4, 0, 1e-5, 1e-2, 1e5],
+                              [1, 1e-4, 0, 1e-5, 1e-2, 1e2],
+                              [1, 1e-4, 0, 1e-5, 1e-2, 1e1],
+                              [1, 1e-4, 0, 1e-5, 1e-2, 1e-1],
+                              [1, 1e-4, 1e-4, 5e-5, 3e-2, 1e3],
+                              [1, 1e-4, 1e-4, 5e-5, 3e-2, 1e4],
+                              [1, 1e-4, 1e-4, 5e-5, 3e-2, 1e5],
+                              [1, 1e-4, 1e-4, 5e-5, 3e-2, 1e2],
+                              [1, 1e-4, 1e-4, 5e-5, 3e-2, 1e1],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 1e3],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 1e4],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 1e5],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 1e2]])
+
+
 
       #train(1,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)
       while len(iter_list) > 0:
          these_iters = iter_list[0:n_jobs]
          iter_list = iter_list[n_jobs:]
-         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name) 
+         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,loss_weight=loss_weight[iteration]) 
                                                      for iteration in these_iters)
 

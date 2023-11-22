@@ -6,10 +6,7 @@ import json
 from utils import *
 
 
-def window_average(x, w=10):
-    rows = int(np.size(x)/w) # round to (floor) int
-    cols = w
-    return x[0:w*rows].reshape((rows,cols)).mean(axis=1)
+
 
 def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
     """
@@ -61,93 +58,51 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
 
-def plot_learning(data_dir,num_model=16,w=1000,figsize=(6,10),loss_type='position'):
-    loss_NF1 = []
-    loss_FF1 = []
-    loss_NF2 = []
-    loss_FF2 = []
+def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,figsize=(6,10),loss_type='position'):
 
-    # Loop through each model
-    for m in range(num_model):
-
-        model_name = "model{:02d}".format(m)
-
-
-        log_NF1 = list(Path(data_dir).glob(f'{model_name}_phase=NF1_*_log.json'))[0]
-        log_FF1 = list(Path(data_dir).glob(f'{model_name}_phase=FF1_FFCoef=8_log.json'))[0]
-        log_NF2 = list(Path(data_dir).glob(f'{model_name}_phase=NF2_*_log.json'))[0]
-        log_FF2 = list(Path(data_dir).glob(f'{model_name}_phase=FF2_*_log.json'))[0]
-        
-        log_NF1 = json.load(open(log_NF1,'r'))
-        log_FF1 = json.load(open(log_FF1,'r'))
-        log_NF2 = json.load(open(log_NF2,'r'))
-        log_FF2 = json.load(open(log_FF2,'r'))
-        
-        # Append data for each model
-        loss_NF1.append(log_NF1[loss_type])
-        loss_FF1.append(log_FF1[loss_type])
-        loss_NF2.append(log_NF2[loss_type])
-        loss_FF2.append(log_FF2[loss_type])
-
-
-    # Calculate window averages for all models
-    if w<=1:
-        NF1w = loss_NF1
-        FF1w = loss_FF1
-        NF2w = loss_NF2
-        FF2w = loss_FF2
-    else:
-        NF1w = [window_average(np.array(loss), w) for loss in loss_NF1]
-        FF1w = [window_average(np.array(loss), w) for loss in loss_FF1]
-        NF2w = [window_average(np.array(loss), w) for loss in loss_NF2]
-        FF2w = [window_average(np.array(loss), w) for loss in loss_FF2]
-
-
-    # Calculate the mean and standard deviation across models
-    NF1_mean = np.mean(NF1w, axis=0)
-    FF1_mean = np.mean(FF1w, axis=0)
-    NF2_mean = np.mean(NF2w, axis=0)
-    FF2_mean = np.mean(FF2w, axis=0)
-
-    NF1_std = np.std(NF1w, axis=0)
-    FF1_std = np.std(FF1w, axis=0)
-    NF2_std = np.std(NF2w, axis=0)
-    FF2_std = np.std(FF2w, axis=0)
-
-    x1w = np.arange(1,np.shape(NF1w)[1]+1)
-    x2w = np.arange(1,np.shape(FF1w)[1]+1) + x1w[-1]
-    x3w = np.arange(1,np.shape(NF2w)[1]+1) + x2w[-1]
-    x4w = np.arange(1,np.shape(FF2w)[1]+1) + x3w[-1]
-
-
+    color_list = ['k','g','k','r']
     fig,ax = plt.subplots(2,1,figsize=figsize)
-    ax[0].plot(x1w,NF1_mean,'k-',label='NF1')
-    ax[0].fill_between(x1w, NF1_mean - NF1_std, NF1_mean + NF1_std, color='gray', alpha=0.5)
-    ax[0].plot(x2w,FF1_mean,'g-',label='FF1')
-    ax[0].fill_between(x2w, FF1_mean - FF1_std, FF1_mean + FF1_std, color='green', alpha=0.5)
-    ax[0].plot(x3w,NF2_mean,'k-',label='NF2')
-    ax[0].fill_between(x3w, NF2_mean - NF2_std, NF2_mean + NF2_std, color='gray', alpha=0.5)
-    ax[0].plot(x4w,FF2_mean,'r-',label='FF2')
-    ax[0].fill_between(x4w, FF2_mean - FF2_std, FF2_mean + FF2_std, color='red', alpha=0.5)
-    ax[0].legend()
 
+    loss = {phase: [] for phase in phases}
+    for i,phase in enumerate(phases):
+        for m in range(num_model):
+            model_name = "model{:02d}".format(m)
+            log = list(Path(data_dir).glob(f'{model_name}_phase={phase}_*_log.json'))[0]
+            log = json.load(open(log,'r'))
+            loss[phase].append(log[loss_type])
+        
 
-    ax[1].plot(FF1_mean,'g-',label='FF1')
-    ax[1].plot(FF2_mean,'r-',label='FF2')
+        # Calculate window averages for all models
+        loss[phase] = [window_average(np.array(l), w) for l in loss[phase]]
+        # Calculate the mean and standard deviation across models
+        loss[phase+'_mean'] = np.mean(loss[phase], axis=0)
+        loss[phase+'_std'] = np.std(loss[phase], axis=0)
+
+        loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1)
+        if i > 0:
+            loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1) + np.max(loss[phases[i-1]+'_x'])
+            #np.shape(loss[phases[i-1]])[1]
+        
+        ax[0].plot(loss[phase+'_x'],loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
+        ax[0].fill_between(loss[phase+'_x'], loss[phase+'_mean'] - loss[phase+'_std'], loss[phase+'_mean'] + loss[phase+'_std'], color=color_list[i], alpha=0.5)
+
+        if phase=='FF1' or phase=='FF2':
+            ax[1].plot(loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
+
     ax[1].legend()
-
+    ax[0].legend()
     ax[0].set_ylabel(loss_type)
     ax[1].set_ylabel(loss_type)
 
-    ax[0].axhline(y=np.mean(NF1_mean[:-10]), color='k', linestyle='--', linewidth=1)
+    ax[0].axhline(y=np.mean(loss['NF1_mean'][:-10]), color='k', linestyle='--', linewidth=1)
+
     return fig, ax
 
 
+def plot_activation(all_hidden, all_muscles,figsize=(10,15)):
+    fg, ax = plt.subplots(nrows=8,ncols=2,figsize=figsize)
 
-def plot_activation(all_hidden, all_muscles):
-    fg, ax = plt.subplots(nrows=8,ncols=2,figsize=(10,20))
-
-    x = np.linspace(0, 1, 100)
+    x = np.linspace(0, 1, np.shape(all_hidden)[1])
 
     for i in range(8):
         ax[i,0].plot(x,np.array(all_muscles[i,:,:]))
@@ -155,8 +110,8 @@ def plot_activation(all_hidden, all_muscles):
         
         ax[i,0].set_ylabel('muscle act (au)')
         ax[i,1].set_ylabel('hidden act (au)')
-        ax[i,0].set_xlabel('time (s)')
-        ax[i,1].set_xlabel('time (s)')
+    ax[i,0].set_xlabel('time (s)')
+    ax[i,1].set_xlabel('time (s)')
     return fg, ax
 
 
@@ -193,26 +148,89 @@ def plot_traj(X_latent_list, plot_scatter=1, marker=['x','o'],alpha=[1,0.5], whi
 
     return fig, ax
 
-def plot_force(data,label):
-    fg, ax = plt.subplots(nrows=8,ncols=1,figsize=(10,15))
+def plot_force(data,label,figsize=(10,15)):
+    fg, ax = plt.subplots(nrows=8,ncols=2,figsize=figsize)
 
-    color_list = ['r','b','g','c','m','y','k','orange']
+    color_list = ['m','c','g','b','r','y','k','orange']
 
     x = np.linspace(0, 1, np.shape(data[0]['all_endpoint'])[1])
 
+    max_force = 0
+    max_vel = 0
     for i in range(8):
-        
         for j in range(len(data)):
-            ax[i].plot(x,np.linalg.norm(data[j]['all_endpoint'][i,:,:],axis=1),color=color_list[j],label=label[j])
-            ax[i].plot(x,10*np.linalg.norm(data[j]['vel'][i,:,:],axis=1),color=color_list[j],label='vel ' + label[j],alpha=0.3,linestyle='--')
+            ep = np.linalg.norm(data[j]['all_endpoint'][i,:,:],axis=1)
+            vel = np.linalg.norm(data[j]['vel'][i,:,:],axis=1)
+            if np.max(ep)>max_force:
+                max_force = np.max(ep)
+            if np.max(vel)>max_vel:
+                max_vel = np.max(vel)
+            ax[i,0].plot(x,ep,color=color_list[j],label=label[j])
+            ax[i,1].plot(x,vel,color=color_list[j],label='vel ' + label[j],alpha=1,linestyle='-')
 
-        ax[i].axhline(y=00, color='k')
+        ax[i,0].axhline(y=00, color='k')
+        ax[i,1].axhline(y=00, color='k')
 
-        ax[i].set_ylabel('Force [N]')
-        ax[i].set_ylim([-1,7])
-        if i==7:
-            ax[i].set_xlabel('Time [s]')
-        ax[i].legend()
+        ax[i,0].set_ylabel('Force [N]')
+        ax[i,1].set_ylabel('Velocity [m/s]')
+    for i in range(8):
+        ax[i,0].set_ylim([-1,max_force+1])
+        ax[i,0].set_xlim([-1,max_vel+1])
+    ax[i,0].set_xlabel('Time [s]')
+    ax[i,1].set_xlabel('Time [s]')
+    ax[0,0].legend()
+    ax[0,1].legend()
+    return fg, ax
+
+def plot_kinematic(vel,xy,tg,figsize=(10,15)):
+    """
+    """
+    fg, ax = plt.subplots(nrows=8,ncols=2,figsize=figsize)
+
+
+    vel = np.array(vel)
+    xy = np.array(xy)
+    tg = np.array(tg)
+
+    # use for calculating lateral and parallel speed
+    #target = tg[:,-1,:]
+    #init = xy[:,0,:]
+
+    #line_vector = target - init
+    #line_vector2 = np.tile(line_vector[:,None,:],(1,vel.shape[1],1))
+
+    #projection = np.sum(line_vector2 * vel, axis=-1)/np.sum(line_vector2 * line_vector2, axis=-1)
+    #projection = line_vector2 * projection[:,:,np.newaxis]
+
+    #lat_speed = vel - projection
+
+    #vel = lat_speed
+    #vel = projection
+
+    color_list = ['blue','orange','red','green']
+
+    x = np.linspace(0, 1, np.shape(vel)[1])
+
+    for i in range(8):
+
+        ax[i,0].plot(x,xy[i,:,0],color=color_list[2],label='x')
+        ax[i,0].plot(x,xy[i,:,1],color=color_list[3],label='y')
+        ax[i,0].plot(x,tg[i,:,0],color=color_list[0])
+        ax[i,0].plot(x,tg[i,:,1],color=color_list[1])
+        ax[i,0].set_ylabel('position [m]')
+
+        ax[i,1].plot(x,vel[i,:,0],color=color_list[0],label='x')
+        ax[i,1].plot(x,vel[i,:,1],color=color_list[1],label='y')
+        ax[i,1].axhline(y=0, color='k')
+        ax[i,1].set_ylabel('velocity [m/s]')
+        
+
+    ax[i,0].legend()
+    ax[i,1].legend()
+    
+    ax[i,0].set_xlabel('Time [s]')
+    ax[i,1].set_xlabel('Time [s]')
+        
     return fg, ax
 
 

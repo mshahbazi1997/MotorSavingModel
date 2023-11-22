@@ -5,8 +5,6 @@ import numpy as np
 from scipy.optimize import minimize
 
 
-
-
 def create_directory(directory_name=None):
     if directory_name is None:
         directory_name = datetime.datetime.now().date().isoformat()
@@ -27,6 +25,11 @@ def create_directory(directory_name=None):
 
     # Return the created directory's name (whether it was newly created or already existed)
     return directory_path
+
+def window_average(x, w=10):
+    rows = int(np.size(x)/w) # round to (floor) int
+    cols = w
+    return x[0:w*rows].reshape((rows,cols)).mean(axis=1)
 
 def load_env(task,cfg=None,dT=None):
 
