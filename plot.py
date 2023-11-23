@@ -15,12 +15,13 @@ def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
     fig, ax = plt.subplots(figsize=figsize)
     if isinstance(log,dict):
        log = log[loss_type]
-    log = window_average(np.array(log),w=w)
+    loss = window_average(np.array(log),w=w)
 
-    ax.semilogy(log)
+    ax.semilogy(loss)
 
     ax.set_ylabel("Loss")
     ax.set_xlabel("Batch #")
+    print(np.mean(loss[:-1000]))
     return fig, ax
 
 
@@ -175,7 +176,7 @@ def plot_force(data,label,figsize=(10,15)):
         ax[i,1].set_ylabel('Velocity [m/s]')
     for i in range(8):
         ax[i,0].set_ylim([-1,max_force+1])
-        ax[i,0].set_xlim([-1,max_vel+1])
+        ax[i,1].set_ylim([-1,max_vel+1])
     ax[i,0].set_xlabel('Time [s]')
     ax[i,1].set_xlabel('Time [s]')
     ax[0,0].legend()
