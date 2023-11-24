@@ -57,8 +57,9 @@ def train(model_num,ff_coefficient,phase,n_batch=50000,directory_name=None,loss_
     'muscle': [],
     'hidden': []}
   
-  
-  for batch in range(n_batch):#tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
+  #batch in range(n_batch):
+  for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
+  #for tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
     # Run episode
     data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
@@ -90,8 +91,8 @@ def train(model_num,ff_coefficient,phase,n_batch=50000,directory_name=None,loss_
     losses['hidden'].append(loss_train['hidden'].item())
 
     # print progress
-    if (batch % interval == 0) and (batch != 0):
-      print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
+    #if (batch % interval == 0) and (batch != 0):
+    #  print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
 
   # save weights and losses
   weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
@@ -310,30 +311,60 @@ if __name__ == "__main__":
       n_batch = int(sys.argv[4])
       directory_name = sys.argv[5]
 
-      iter_list = range(19)
-      n_jobs = 19
+      iter_list = range(48)
+      n_jobs = 48
 
 
-      loss_weight = np.array([[1, 1e-4, 0, 5e-5, 3e-2, 1e2],
-                        [1, 1e-4, 0, 1e-5, 1e-2, 5e2],
-                        [1, 1e-4, 0, 1e-5, 1e-2, 7e2], # 8
-                        [1, 1e-4, 0, 1e-5, 1e-2, 6e2],
-                        [1, 1e-4, 0, 1e-5, 1e-2, 6e2],
-                        [1, 5e-5, 0, 1e-5, 1e-2, 6e2],
-                        [1, 5e-5, 0, 5e-5, 3e-2, 6e2],
-                        [1, 1e-4, 0, 1e-5, 1e-2, 4e2],
-                        [1, 1e-4, 1e-5, 1e-5, 1e-2, 6e2],
-                        [1, 1e-4, 1e-4, 1e-5, 1e-2, 1e2], 
-                        [1, 1e-4, 1e-4, 1e-5, 1e-2, 2e2],
-                        [1, 1e-4, 1e-4, 1e-5, 1e-2, 3e2],
-                        [1, 1e-4, 1e-4, 1e-5, 1e-2, 4e2],
-                        [1, 1e-4, 0, 3e-5, 2e-2, 2e2],
-                        [1, 1e-4, 0, 2e-5, 3e-2, 7e2], # 8
-                        [1, 5e-4, 0, 3e-5, 4e-2, 7e2], # 8
-                        [1, 3e-4, 0, 3e-5, 4e-2, 5e2], # 8
-                        [1, 1e-4, 1e-5, 5e-5, 5e-2, 5e1], # 8
-                        [1, 1e-4, 1e-5, 5e-5, 5e-2, 5e2], # 8
-                        ]) 
+      loss_weight = np.array([[1, 1e-4, 1e-5, 5e-5, 5e-2, 5e1],
+                              [1, 1e-4, 1e-5, 5e-5, 5e-2, 8e1],
+                              [1, 1e-4, 1e-5, 5e-5, 5e-2, 1e2],
+                              [1, 1e-4, 1e-5, 5e-5, 5e-2, 2e2],
+                              [1, 1e-4, 1e-5, 5e-5, 5e-2, 5e2],
+                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 1e1],
+                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 2e1],
+                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 3e1],
+                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 4e1],
+                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 5e1],
+                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 8e1],
+                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 1e2],
+                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 2e2],
+                              [1, 1e-4, 1e-4, 5e-5, 3e-2, 5e2],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 1e2],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 2e2],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 3e2],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 4e2],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 5e2],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 6e2],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 7e2],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 8e2],
+                              [1, 1e-4, 0, 5e-5, 3e-2, 1e3],
+                              [1, 5e-5, 0, 1e-5, 1e-2, 6e2],
+                              [1, 4e-5, 0, 1e-5, 1e-2, 6e2],
+                              [1, 3e-5, 0, 1e-5, 1e-2, 6e2],
+                              [1, 2e-5, 0, 1e-5, 1e-2, 6e2],
+                              [1, 1e-5, 0, 1e-5, 1e-2, 6e2],
+                              [1, 5e-5, 1e-4, 1e-5, 1e-2, 6e2],
+                              [1, 4e-5, 1e-4, 1e-5, 1e-2, 6e2],
+                              [1, 3e-5, 1e-4, 1e-5, 1e-2, 6e2],
+                              [1, 2e-5, 1e-4, 1e-5, 1e-2, 6e2],
+                              [1, 1e-5, 1e-4, 1e-5, 1e-2, 6e2],
+                              [1, 1e-4, 0, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 1e-4, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 1e-5, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 1e-6, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 2e-6, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 3e-6, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 4e-6, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 5e-6, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 2e-5, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 3e-5, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 4e-5, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 5e-5, 3e-5, 2e-2, 2e2],
+                              [1, 1e-4, 6e-5, 3e-5, 2e-2, 2e2],
+                              [1, 2e-4, 0, 3e-5, 4e-2, 5e2],
+                              [1, 1e-4, 0, 3e-5, 4e-2, 5e2],
+                              ])
+
 
 
       #train(1,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)
