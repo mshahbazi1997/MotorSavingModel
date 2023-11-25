@@ -310,67 +310,20 @@ if __name__ == "__main__":
       phase = sys.argv[3] # growing_up or anything else
       n_batch = int(sys.argv[4])
       directory_name = sys.argv[5]
+      idx = int(sys.argv[6])
 
-      iter_list = range(48)
-      n_jobs = 48
+      iter_list = range(8)
+      n_jobs = 8
 
 
-      loss_weight = np.array([[1, 1e-4, 1e-5, 5e-5, 5e-2, 5e1],
-                              [1, 1e-4, 1e-5, 5e-5, 5e-2, 8e1],
-                              [1, 1e-4, 1e-5, 5e-5, 5e-2, 1e2],
-                              [1, 1e-4, 1e-5, 5e-5, 5e-2, 2e2],
-                              [1, 1e-4, 1e-5, 5e-5, 5e-2, 5e2],
-                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 1e1],
-                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 2e1],
-                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 3e1],
-                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 4e1],
-                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 5e1],
-                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 8e1],
-                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 1e2],
-                              [1, 1e-4, 1e-5, 5e-5, 3e-2, 2e2],
-                              [1, 1e-4, 1e-4, 5e-5, 3e-2, 5e2],
-                              [1, 1e-4, 0, 5e-5, 3e-2, 1e2],
-                              [1, 1e-4, 0, 5e-5, 3e-2, 2e2],
-                              [1, 1e-4, 0, 5e-5, 3e-2, 3e2],
-                              [1, 1e-4, 0, 5e-5, 3e-2, 4e2],
-                              [1, 1e-4, 0, 5e-5, 3e-2, 5e2],
-                              [1, 1e-4, 0, 5e-5, 3e-2, 6e2],
-                              [1, 1e-4, 0, 5e-5, 3e-2, 7e2],
-                              [1, 1e-4, 0, 5e-5, 3e-2, 8e2],
-                              [1, 1e-4, 0, 5e-5, 3e-2, 1e3],
-                              [1, 5e-5, 0, 1e-5, 1e-2, 6e2],
-                              [1, 4e-5, 0, 1e-5, 1e-2, 6e2],
-                              [1, 3e-5, 0, 1e-5, 1e-2, 6e2],
-                              [1, 2e-5, 0, 1e-5, 1e-2, 6e2],
-                              [1, 1e-5, 0, 1e-5, 1e-2, 6e2],
-                              [1, 5e-5, 1e-4, 1e-5, 1e-2, 6e2],
-                              [1, 4e-5, 1e-4, 1e-5, 1e-2, 6e2],
-                              [1, 3e-5, 1e-4, 1e-5, 1e-2, 6e2],
-                              [1, 2e-5, 1e-4, 1e-5, 1e-2, 6e2],
-                              [1, 1e-5, 1e-4, 1e-5, 1e-2, 6e2],
-                              [1, 1e-4, 0, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 1e-4, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 1e-5, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 1e-6, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 2e-6, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 3e-6, 3e-5, 2e-2, 2e2],
+      loss_weight = np.array([[1, 1e-4, 1e-5, 3e-5, 2e-2, 2e2],
                               [1, 1e-4, 4e-6, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 5e-6, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 2e-5, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 3e-5, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 4e-5, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 5e-5, 3e-5, 2e-2, 2e2],
-                              [1, 1e-4, 6e-5, 3e-5, 2e-2, 2e2],
-                              [1, 2e-4, 0, 3e-5, 4e-2, 5e2],
-                              [1, 1e-4, 0, 3e-5, 4e-2, 5e2],
-                              ])
-
-
+                              [1, 1e-4, 5e-5, 3e-5, 2e-2, 2e2]])
 
       #train(1,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)
       while len(iter_list) > 0:
          these_iters = iter_list[0:n_jobs]
          iter_list = iter_list[n_jobs:]
-         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,loss_weight=loss_weight[iteration]) 
+         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,loss_weight=loss_weight[idx]) 
                                                      for iteration in these_iters)
 
