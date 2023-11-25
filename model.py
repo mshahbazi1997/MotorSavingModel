@@ -310,7 +310,7 @@ if __name__ == "__main__":
       phase = sys.argv[3] # growing_up or anything else
       n_batch = int(sys.argv[4])
       directory_name = sys.argv[5]
-      idx = int(sys.argv[6])
+      #idx = int(sys.argv[6])
 
       iter_list = range(8)
       n_jobs = 8
@@ -324,6 +324,6 @@ if __name__ == "__main__":
       while len(iter_list) > 0:
          these_iters = iter_list[0:n_jobs]
          iter_list = iter_list[n_jobs:]
-         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,loss_weight=loss_weight[idx]) 
+         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,loss_weight=loss_weight[0]) 
                                                      for iteration in these_iters)
 
