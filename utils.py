@@ -38,8 +38,8 @@ def load_env(task,cfg=None,dT=None):
         name = 'env'
 
         action_noise         = 1e-4
-        proprioception_noise = 1e-3
-        vision_noise         = 1e-4
+        proprioception_noise = 1e-4 # 1e-3
+        vision_noise         = 1e-5 # 1e-4
         vision_delay         = 0.07
         proprioception_delay = 0.02
 
