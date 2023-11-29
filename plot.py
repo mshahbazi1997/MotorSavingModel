@@ -150,7 +150,7 @@ def plot_traj(X_latent_list, plot_scatter=1, marker=['x','o'],alpha=[1,0.5], whi
     return fig, ax
 
 def plot_force(data,label,figsize=(10,15)):
-    fg, ax = plt.subplots(nrows=8,ncols=2,figsize=figsize)
+    fg, ax = plt.subplots(nrows=8,ncols=1,figsize=figsize)
 
     color_list = ['m','c','g','b','r','y','k','orange']
 
@@ -166,21 +166,29 @@ def plot_force(data,label,figsize=(10,15)):
                 max_force = np.max(ep)
             if np.max(vel)>max_vel:
                 max_vel = np.max(vel)
-            ax[i,0].plot(x,ep,color=color_list[j],label=label[j])
-            ax[i,1].plot(x,vel,color=color_list[j],label='vel ' + label[j],alpha=1,linestyle='-')
+            #ax[i,0].plot(x,ep,color=color_list[j],label=label[j])
+            #ax[i,1].plot(x,vel,color=color_list[j],label='vel ' + label[j],alpha=1,linestyle='-')
+            ax[i].plot(x,ep,color=color_list[j],label=label[j])
+            ax[i].plot(x,8*vel,color=color_list[j],label='8 * vel ' + label[j],alpha=0.5,linestyle='--')
 
-        ax[i,0].axhline(y=00, color='k')
-        ax[i,1].axhline(y=00, color='k')
+        #ax[i,0].axhline(y=00, color='k')
+        #ax[i,1].axhline(y=00, color='k')
+        ax[i].axhline(y=00, color='k')
+        
 
-        ax[i,0].set_ylabel('Force [N]')
-        ax[i,1].set_ylabel('Velocity [m/s]')
+        #ax[i,0].set_ylabel('Force [N]')
+        #ax[i,1].set_ylabel('Velocity [m/s]')
+        ax[i].set_ylabel('Force [N]')
     for i in range(8):
-        ax[i,0].set_ylim([-0.5,max_force+0.5])
-        ax[i,1].set_ylim([-0.5,max_vel+0.5])
-    ax[i,0].set_xlabel('Time [s]')
-    ax[i,1].set_xlabel('Time [s]')
-    ax[0,0].legend()
-    ax[0,1].legend()
+        #ax[i,0].set_ylim([-0.5,max_force+0.5])
+        #ax[i,1].set_ylim([-0.5,max_vel+0.5])
+        ax[i].set_ylim([-0.5,max_force+0.5])
+    #ax[i,0].set_xlabel('Time [s]')
+    #ax[i,1].set_xlabel('Time [s]')
+    ax[i].set_xlabel('Time [s]')
+    #ax[0,0].legend()
+    #ax[0,1].legend()
+    ax[0].legend()
     return fg, ax
 
 def plot_kinematic(vel,xy,tg,figsize=(10,15)):

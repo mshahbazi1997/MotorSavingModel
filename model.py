@@ -296,13 +296,13 @@ if __name__ == "__main__":
           #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=3000,directory_name=directory_name) 
           #                                           for iteration in these_iters)
           # FF1
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=20000,directory_name=directory_name) 
-                                                     for iteration in these_iters)
+          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=20000,directory_name=directory_name) 
+          #                                           for iteration in these_iters)
           # NF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF2',n_batch=20000,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF2',n_batch=50000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF2',n_batch=20000,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF2',n_batch=50000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           
     else: ## training networks for each phase separately
