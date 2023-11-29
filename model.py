@@ -41,7 +41,8 @@ def train(model_num,ff_coefficient,phase,n_batch=50000,directory_name=None,loss_
                              next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_cfg.json')))
     cfg = json.load(open(cfg_file,'r'))
     env = load_env(CentreOutFF,cfg)
-    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, freeze_output_layer=True)
+    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 
+                    freeze_output_layer=True, freeze_input_layer=True)
     policy.load_state_dict(th.load(weight_file))
 
     optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
