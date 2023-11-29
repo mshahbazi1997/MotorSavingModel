@@ -59,7 +59,7 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
 
-def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,figsize=(6,10),loss_type='position'):
+def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,figsize=(6,10),loss_type='position',ignore=None):
 
     color_list = ['k','g','k','r']
     fig,ax = plt.subplots(2,1,figsize=figsize)
@@ -67,6 +67,8 @@ def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,fig
     loss = {phase: [] for phase in phases}
     for i,phase in enumerate(phases):
         for m in range(num_model):
+            if m in ignore:
+                continue
             model_name = "model{:02d}".format(m)
             log = list(Path(data_dir).glob(f'{model_name}_phase={phase}_*_log.json'))[0]
             log = json.load(open(log,'r'))
