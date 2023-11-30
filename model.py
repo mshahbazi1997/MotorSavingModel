@@ -312,8 +312,8 @@ if __name__ == "__main__":
       directory_name = sys.argv[5]
       #idx = int(sys.argv[6])
 
-      iter_list = range(8)
-      n_jobs = 8
+      iter_list = range(16)
+      n_jobs = 16
 
 
       #loss_weight = np.array([[1, 1e-4, 1e-5, 3e-5, 2e-2, 2e2],
