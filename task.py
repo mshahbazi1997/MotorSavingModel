@@ -23,6 +23,10 @@ class CentreOutFF(mn.environment.Environment):
             K: float = 1,
             B: float = -1,
             go_cue_range: Union[list, tuple, np.ndarray] = (0.1, 0.3),
+            pert_force_range: Union[list, tuple, np.ndarray] = (1, 2), # force in newton
+            pert_time_range: Union[list, tuple, np.ndarray] = (0.1, 0.7), # time in seconds
+            pert_dur_range: Union[list, tuple, np.ndarray] = (0.2, 0.3), # duration in seconds
+            pert_prob: float = 0.0,
             options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
 
     self._set_generator(seed)
@@ -31,10 +35,21 @@ class CentreOutFF(mn.environment.Environment):
     batch_size: int = options.get('batch_size', 1)
     joint_state: th.Tensor | np.ndarray | None = options.get('joint_state', None)
     deterministic: bool = options.get('deterministic', False)
+
+
+    self.batch_size = batch_size 
   
     self.catch_trial_perc = catch_trial_perc
     self.ff_coefficient = ff_coefficient
     self.go_cue_range = go_cue_range # in seconds
+
+    # perturbation parameters
+    self.pert_force_range = pert_force_range
+    self.pert_time_range = pert_time_range
+    self.pert_dur_range = pert_dur_range
+    self.pert_prob = pert_prob
+
+    # channel parameters
     self.is_channel = is_channel
     self.K = K
     self.B = B
@@ -112,6 +127,29 @@ class CentreOutFF(mn.environment.Environment):
     
     endpoint_load = th.zeros((batch_size,2)).to(self.device)
     self.endpoint_load = endpoint_load
+
+    # perturbation....
+    pert_trial = np.zeros(batch_size, dtype='float32')
+    p = int(np.floor(batch_size * self.pert_prob / 100))
+    pert_trial[np.random.permutation(pert_trial.size)[:p]] = 1.
+    self.pert_trial = pert_trial
+
+    # if perturbation trial, set endpoint load to perturbation force, if not set to zero
+    pert_dur = np.random.uniform(self.pert_dur_range[0], self.pert_dur_range[1], batch_size).astype('float32')
+    pert_time = np.random.uniform(self.pert_time_range[0],self.pert_time_range[1],batch_size).astype('float32')
+    pert_interval = np.concatenate([pert_time[:,None],pert_time[:,None]+pert_dur[:,None]],axis=1)
+
+    self.pert_interval = th.from_numpy(pert_interval).to(self.device)
+
+    pert_dir = np.concatenate([np.random.uniform(-1,1,(batch_size,1)),np.random.uniform(-1,1,(batch_size,1))],axis=1).astype('float32')
+    pert_dir = pert_dir / np.linalg.norm(pert_dir,axis=1,keepdims=True)
+    pert_force = np.random.uniform(self.pert_force_range[0],self.pert_force_range[1],batch_size).astype('float32')
+    
+    self.pert_force = th.from_numpy(pert_force[:,None]*pert_dir).to(self.device)
+
+    self.pert_interval[self.pert_trial==0] = self.max_ep_duration
+    self.pert_force[self.pert_trial==0] = 0
+
     
     info = {
       "states": self.states,
@@ -161,15 +199,24 @@ class CentreOutFF(mn.environment.Environment):
       F = -1*(self.B*err+self.K*err_d)
       self.endpoint_load = F
 
+      mask = self.elapsed < self.go_cue_time
+      self.endpoint_load[mask] = 0
+
+    elif self.pert_prob > 0:
+      
+      self.endpoint_load = th.zeros((self.batch_size,2)).to(self.device)
+      mask = (self.elapsed > self.pert_interval[:,0]) & (self.elapsed < self.pert_interval[:,1])
+      self.endpoint_load[mask] = self.pert_force[mask]
+
+
     else:
       FF_matvel = th.tensor([[0, 1], [-1, 0]], dtype=th.float32)
       # set endpoint load to zero before go cue
       self.endpoint_load = self.ff_coefficient * (vel@FF_matvel.T)
 
-    mask = self.elapsed < self.go_cue_time
-    self.endpoint_load[mask] = 0
+      mask = self.elapsed < self.go_cue_time
+      self.endpoint_load[mask] = 0
     
-    #self.effector.step(noisy_action,endpoint_load=self.endpoint_load) # **kwargs
 
     # specify go cue time
     mask = self.elapsed >= (self.go_cue_time + (self.vision_delay-1) * self.dt)

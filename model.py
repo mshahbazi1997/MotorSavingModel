@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 
 
-def train(model_num,ff_coefficient,phase,n_batch=50000,directory_name=None,loss_weight=None):
+def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,directory_name=None,loss_weight=None):
 
   device = th.device("cpu")
   interval = 1000
@@ -34,8 +34,10 @@ def train(model_num,ff_coefficient,phase,n_batch=50000,directory_name=None,loss_
 
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
     batch_size = 128
+    pert_prob = 0.5
 
   else:
+    pert_prob = 0
     phase_prev = 'growing_up' if phase not in all_phase else all_phase[all_phase.tolist().index(phase) - 1]
     weight_file, cfg_file = (next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_weights')),
                              next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_cfg.json')))
@@ -48,8 +50,6 @@ def train(model_num,ff_coefficient,phase,n_batch=50000,directory_name=None,loss_
     optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
     batch_size = 200
 
-    
-
   losses = {
     'overall': [],
     'position': [],
@@ -58,12 +58,11 @@ def train(model_num,ff_coefficient,phase,n_batch=50000,directory_name=None,loss_
     'muscle': [],
     'hidden': []}
   
-  #batch in range(n_batch):
+  #for batch in range(n_batch):
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
-  #for tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
     # Run episode
-    data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
+    data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False,pert_prob=pert_prob)
 
     # calculate losses
     #loss_train = cal_loss(data, env.muscle.max_iso_force, env.dt, policy, test=False,loss_weight=loss_weight)
@@ -92,8 +91,8 @@ def train(model_num,ff_coefficient,phase,n_batch=50000,directory_name=None,loss_
     losses['hidden'].append(loss_train['hidden'].item())
 
     # print progress
-    #if (batch % interval == 0) and (batch != 0):
-    #  print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
+    if (batch % interval == 0) and (batch != 0):
+      print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
 
   # save weights and losses
   weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
@@ -233,9 +232,9 @@ def cal_loss(data, loss_weight=None, test=False):
   return loss
 
 
-def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,K=1,B=-1,detach=False):
+def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,K=1,B=-1,detach=False,pert_prob=0.0):
   h = policy.init_hidden(batch_size=batch_size)
-  obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, is_channel=is_channel,K=K,B=B)
+  obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, is_channel=is_channel,K=K,B=B,pert_prob=pert_prob)
   terminated = False
 
   # Initialize a dictionary to store lists
@@ -294,11 +293,11 @@ if __name__ == "__main__":
           #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=50000,directory_name=directory_name) 
           #                                           for iteration in these_iters)
           # NF1
-          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=3000,directory_name=directory_name) 
-          #                                           for iteration in these_iters)
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=30000,directory_name=directory_name) 
+                                                     for iteration in these_iters)
           # FF1
-          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=20000,directory_name=directory_name) 
-          #                                           for iteration in these_iters)
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=60000,directory_name=directory_name) 
+                                                     for iteration in these_iters)
           # NF2
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF2',n_batch=50000,directory_name=directory_name) 
                                                      for iteration in these_iters)
@@ -313,8 +312,8 @@ if __name__ == "__main__":
       directory_name = sys.argv[5]
       #idx = int(sys.argv[6])
 
-      iter_list = range(16)
-      n_jobs = 16
+      iter_list = range(8)
+      n_jobs = 8
 
 
       #loss_weight = np.array([[1, 1e-4, 1e-5, 3e-5, 2e-2, 2e2],
