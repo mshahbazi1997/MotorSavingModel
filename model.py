@@ -34,7 +34,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
 
     optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
     batch_size = 128
-    pert_prob = 0.5
+    pert_prob = 50
 
   else:
     pert_prob = 0
@@ -129,7 +129,7 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=N
   
   
   # Run episode
-  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True)
+  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True,pert_prob=100)
   
 
   return data
