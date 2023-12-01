@@ -129,7 +129,7 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=N
   
   
   # Run episode
-  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True,pert_prob=100)
+  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True,pert_prob=0)
   
 
   return data
