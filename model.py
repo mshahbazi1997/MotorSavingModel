@@ -94,16 +94,16 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
     if (batch % interval == 0) and (batch != 0):
       print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
 
-  # save weights and losses
-  weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
-  log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_log.json")
-  cfg_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_cfg.json")
+      # save the result at every 1000 batches
+      weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
+      log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_log.json")
+      cfg_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_cfg.json")
 
-  th.save(policy.state_dict(), weight_file)
+      th.save(policy.state_dict(), weight_file)
 
-  with open(log_file,'w') as file, open(cfg_file,'w') as cfg_file:
-    json.dump(losses,file)
-    json.dump(env.get_save_config(),cfg_file)
+      with open(log_file,'w') as file, open(cfg_file,'w') as cfg_file:
+        json.dump(losses,file)
+        json.dump(env.get_save_config(),cfg_file)
 
   print("Done...")
 
