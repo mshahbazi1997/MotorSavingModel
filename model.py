@@ -14,7 +14,12 @@ from tqdm import tqdm
 
 
 
-def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,directory_name=None,loss_weight=None):
+def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_batch=50000,directory_name=None,loss_weight=None):
+  """
+  args:
+    continue_train (int 0/1):
+      specifies whether go to the next phase or continue training the network
+  """
 
   device = th.device("cpu")
   interval = 1000
@@ -27,20 +32,47 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
   model_name = "model{:02d}".format(model_num)
   print("{}...".format(model_name))
 
-  
-  if phase=='growing_up':
-    env = load_env(CentreOutFF)
-    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device)
+  if continue_train==0:
+    if phase=='growing_up':
+      env = load_env(CentreOutFF)
+      policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device)
 
-    optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
-    batch_size = 128
-    pert_prob = 50
+      optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
+      batch_size = 128
+      pert_prob = 50
+      losses = {
+         'overall': [],
+         'position': [],
+         'angle': [],
+         'lateral': [],
+         'muscle': [],
+         'hidden': []}
 
+    else:
+      pert_prob = 0
+      phase_prev = 'growing_up' if phase not in all_phase else all_phase[all_phase.tolist().index(phase) - 1]
+      weight_file, cfg_file = (next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_weights')),
+                              next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_cfg.json')))
+      cfg = json.load(open(cfg_file,'r'))
+      env = load_env(CentreOutFF,cfg)
+      policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 
+                      freeze_output_layer=True, freeze_input_layer=True)
+      policy.load_state_dict(th.load(weight_file))
+
+      optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
+      batch_size = 200
+      losses = {
+         'overall': [],
+         'position': [],
+         'angle': [],
+         'lateral': [],
+         'muscle': [],
+         'hidden': []}
   else:
     pert_prob = 0
-    phase_prev = 'growing_up' if phase not in all_phase else all_phase[all_phase.tolist().index(phase) - 1]
-    weight_file, cfg_file = (next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_weights')),
-                             next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_cfg.json')))
+    # currently only for continue training in NF1/FF1/NF2/FF2
+    weight_file, cfg_file = (next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_weights')),
+                            next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_cfg.json')))
     cfg = json.load(open(cfg_file,'r'))
     env = load_env(CentreOutFF,cfg)
     policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 
@@ -50,13 +82,12 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
     optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
     batch_size = 200
 
-  losses = {
-    'overall': [],
-    'position': [],
-    'angle': [],
-    'lateral': [],
-    'muscle': [],
-    'hidden': []}
+    # load losses to attach
+    log_file = list(Path(output_folder).glob(f'{model_name}_phase={phase}_*_log.json'))[0]
+    losses = json.load(open(log_file,'r'))
+
+
+  
   
   #for batch in range(n_batch):
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
@@ -293,13 +324,13 @@ if __name__ == "__main__":
           #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=50000,directory_name=directory_name) 
           #                                           for iteration in these_iters)
           # NF1
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=30000,directory_name=directory_name) 
-                                                     for iteration in these_iters)
+          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=30000,directory_name=directory_name) 
+          #                                           for iteration in these_iters)
           # FF1
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=60000,directory_name=directory_name) 
-                                                     for iteration in these_iters)
+          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=60000,directory_name=directory_name) 
+          #                                           for iteration in these_iters)
           # NF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF2',n_batch=30000,directory_name=directory_name) 
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF2',n_batch=60000,directory_name=directory_name) 
                                                      for iteration in these_iters)
           # FF2
           result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF2',n_batch=60000,directory_name=directory_name) 
@@ -324,6 +355,6 @@ if __name__ == "__main__":
       while len(iter_list) > 0:
          these_iters = iter_list[0:n_jobs]
          iter_list = iter_list[n_jobs:]
-         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)  # ,loss_weight=loss_weight[1]
+         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,continue_train=1,n_batch=n_batch,directory_name=directory_name)  # ,loss_weight=loss_weight[1]
                                                      for iteration in these_iters)
 
