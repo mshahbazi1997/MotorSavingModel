@@ -246,3 +246,20 @@ def plot_kinematic(vel,xy,tg,figsize=(10,15)):
 
 
 
+def plot_Gs(G,grid = None,labels=[],titles=[],figsize=(12,12),vmin=None, vmax=None):
+    numG,n_cond,n_cond = G.shape
+    if grid is None:
+        a = int(np.ceil(np.sqrt(numG)))
+        b = int(np.ceil(numG/a))
+        grid = (a,b)
+    
+    plt.figure(figsize=figsize)
+    for i in range(numG):
+        
+        plt.subplot(grid[0],grid[1],i+1)
+        plt.title(titles[i])
+        plt.imshow(G[i],vmin=vmin,vmax=np.max(G[i]))
+        plt.colorbar()
+
+        plt.xticks(np.arange(n_cond),labels)
+        plt.yticks(np.arange(n_cond),labels)

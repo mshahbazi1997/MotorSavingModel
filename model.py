@@ -182,53 +182,6 @@ def cal_loss(data, loss_weight=None, test=False):
     'muscle_derivative': None,
     'hidden_derivative': None}
 
-  # calculate losses
-
-  # # input_loss
-  # loss['input'] = th.sqrt(th.sum(th.square(policy.gru.weight_ih_l0)))
-  # # recurrent_loss
-  # loss['recurrent'] = th.sqrt(th.sum(th.square(policy.gru.weight_hh_l0)))
-
-  # # muscle_loss
-  # max_iso_force_n = max_iso_force / th.mean(max_iso_force) 
-  # y = data['all_muscle'] * max_iso_force_n
-  # loss['muscle'] = th.mean(th.square(y))
-
-  # # muscle derivative loss
-  # dy = th.diff(y,axis=1)/dt
-  # loss['muscle_derivative'] = th.mean(th.square(dy))
-
-  # # hidden_loss
-  # y = data['all_hidden']
-  # loss['hidden'] = th.mean(th.square(y))
-
-  # # hidden derivative loss
-  # dy = th.diff(y,axis=1)/dt
-  # loss['hidden_derivative'] = th.mean(th.square(dy))
-
-  # # position_loss
-  # loss['position'] = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
-  
-  # # jerk_loss
-  # y = data['vel']
-  # dy = th.diff(y,dim=1)/dt
-  # d2y = th.diff(dy,dim=1)/dt
-  # loss['jerk'] = th.mean(th.sum(th.square(d2y), dim=-1))
-
-  # if loss_weight is None:
-  #    loss_weight = [1e-6, 5, 0.1, 0.1, 5e-3, 2, 1e-5, 1e-3]
-  
-  # loss['overall'] = \
-  #   loss_weight[0]*loss['input'] + \
-  #   loss_weight[1]*loss['muscle'] + \
-  #   loss_weight[2]*loss['muscle_derivative'] + \
-  #   loss_weight[3]*loss['hidden'] + \
-  #   loss_weight[4]*loss['hidden_derivative'] + \
-  #   loss_weight[5]*loss['position'] + \
-  #   loss_weight[6]*loss['recurrent'] + \
-  #   loss_weight[7]*loss['jerk']
-  
-
   # Another loss version - this one is good enough (tend to produce slower movements)
   
   loss['position'] = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
@@ -341,7 +294,8 @@ if __name__ == "__main__":
       phase = sys.argv[3] # growing_up or anything else
       n_batch = int(sys.argv[4])
       directory_name = sys.argv[5]
-      #idx = int(sys.argv[6])
+      continue_train = int(sys.argv[6]) if len(sys.argv) > 6 else 0
+
 
       iter_list = range(16)
       n_jobs = 16
@@ -355,6 +309,6 @@ if __name__ == "__main__":
       while len(iter_list) > 0:
          these_iters = iter_list[0:n_jobs]
          iter_list = iter_list[n_jobs:]
-         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,continue_train=1,n_batch=n_batch,directory_name=directory_name)  # ,loss_weight=loss_weight[1]
+         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,continue_train=continue_train,n_batch=n_batch,directory_name=directory_name)  # ,loss_weight=loss_weight[1]
                                                      for iteration in these_iters)
 
