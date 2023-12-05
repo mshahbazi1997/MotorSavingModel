@@ -263,3 +263,4 @@ def plot_Gs(G,grid = None,labels=[],titles=[],figsize=(12,12),vmin=None, vmax=No
 
         plt.xticks(np.arange(n_cond),labels)
         plt.yticks(np.arange(n_cond),labels)
+    
