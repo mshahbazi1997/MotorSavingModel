@@ -20,6 +20,7 @@ class CentreOutFF(mn.environment.Environment):
             condition: str = 'train',
             catch_trial_perc: float = 50,
             is_channel: bool = False,
+            calc_endpoint_force: bool = False,
             K: float = 1,
             B: float = -1,
             go_cue_range: Union[list, tuple, np.ndarray] = (0.1, 0.3),
@@ -30,6 +31,8 @@ class CentreOutFF(mn.environment.Environment):
             options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
 
     self._set_generator(seed)
+
+    self.calc_endpoint_force = calc_endpoint_force
 
     options = {} if options is None else options
     batch_size: int = options.get('batch_size', 1)
@@ -150,10 +153,12 @@ class CentreOutFF(mn.environment.Environment):
     self.pert_interval[self.pert_trial==0] = self.max_ep_duration
     self.pert_force[self.pert_trial==0] = 0
 
+    self.endpoint_force = th.zeros((batch_size,2)).to(self.device)
     
     info = {
       "states": self.states,
       "endpoint_load": self.endpoint_load,
+      "endpoint_force": self.endpoint_force,
       "action": action,
       "noisy action": action,  # no noise here so it is the same
       "goal": self.goal,
@@ -216,6 +221,46 @@ class CentreOutFF(mn.environment.Environment):
 
       mask = self.elapsed < self.go_cue_time
       self.endpoint_load[mask] = 0
+
+    if self.calc_endpoint_force:
+      L1 = self.skeleton.L1
+      L2 = self.skeleton.L2
+
+      pos0, pos1 = self.states['joint'][:,0], self.states['joint'][:,1]
+      pos_sum = pos0 + pos1
+      c1 = th.cos(pos0)
+      c12 = th.cos(pos_sum)
+      s1 = th.sin(pos0)
+      s12 = th.sin(pos_sum)
+
+      jacobian_11 = -L1*s1 - L2*s12
+      jacobian_12 = -L2*s12
+      jacobian_21 = L1*c1 + L2*c12
+      jacobian_22 = L2*c12
+
+      jacobian = th.stack([th.stack([jacobian_11, jacobian_12], dim=-1),
+                            th.stack([jacobian_21, jacobian_22], dim=-1)], dim=-2)
+
+
+
+      endpoint_force = th.zeros((self.batch_size,2)).to(self.device)
+
+      forces = self.states['muscle'][:,self.muscle.state_name.index('force'):self.muscle.state_name.index('force')+1,:] # (batch_size,1,n_muscles)
+      moments = self.states["geometry"][:, 2:, :]
+
+      torque = - th.sum(forces * moments, dim=-1)
+
+
+      for i in range(self.batch_size):
+        jacobian = th.tensor([[jacobian_11[i],jacobian_12[i]],[jacobian_21[i],jacobian_22[i]]])
+        
+        endpoint_force[i] = torque[i] @ th.inverse(jacobian)
+      self.endpoint_force = endpoint_force
+    else:
+      self.endpoint_force = th.zeros((self.batch_size,2)).to(self.device)
+
+
+    
     
 
     # specify go cue time
@@ -229,6 +274,7 @@ class CentreOutFF(mn.environment.Environment):
     info = {
       "states": self.states,
       "endpoint_load": self.endpoint_load,
+      "endpoint_force": self.endpoint_force,
       "action": action,
       "noisy action": noisy_action,
       "goal": self.goal * self.go_cue + self.init * (1-self.go_cue), # update the target depending on the go cue

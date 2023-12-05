@@ -139,7 +139,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
   print("Done...")
 
 
-def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=None):
+def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=None,calc_endpoint_force=False):
   device = th.device("cpu")
 
   # load configuration
@@ -160,7 +160,7 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=N
   
   
   # Run episode
-  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True,pert_prob=0)
+  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True,pert_prob=0,calc_endpoint_force=calc_endpoint_force)
   
 
   return data
@@ -216,9 +216,9 @@ def cal_loss(data, loss_weight=None, test=False):
   return loss
 
 
-def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,K=1,B=-1,detach=False,pert_prob=0.0):
+def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,K=1,B=-1,detach=False,pert_prob=0.0,calc_endpoint_force=False):
   h = policy.init_hidden(batch_size=batch_size)
-  obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, is_channel=is_channel,K=K,B=B,pert_prob=pert_prob)
+  obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, is_channel=is_channel,K=K,B=B,pert_prob=pert_prob,calc_endpoint_force=calc_endpoint_force)
   terminated = False
 
   # Initialize a dictionary to store lists
@@ -231,6 +231,7 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',f
       'all_muscle': [],
       'all_force': [],
       'all_endpoint': [],
+      'endpoint_force': []
   }
 
   while not terminated:
@@ -239,6 +240,7 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',f
       data['all_muscle'].append(info['states']['muscle'][:, 0, None, :])
       data['all_force'].append(info['states']['muscle'][:, 6, None, :])
       data['all_endpoint'].append(info['endpoint_load'][:, None, :])
+      data['endpoint_force'].append(info['endpoint_force'][:, None, :])
 
       action, h = policy(obs, h)
       obs, _, terminated, _, info = env.step(action=action)

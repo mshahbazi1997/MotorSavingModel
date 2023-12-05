@@ -25,19 +25,25 @@ def get_data(data,phases,go_cue_idx=10):
         vel_norm = np.linalg.norm(vel,axis=-1)
         max_vel_idx = np.argmax(vel_norm,axis=1)
 
-        muscle_force = np.array(data[i]['all_force'])
-        n_cond = muscle_force.shape[0]
+        #muscle_force = np.array(data[i]['all_force'])
+        #n_cond = muscle_force.shape[0]
 
-        muscle_force_at_peak_vel = muscle_force[np.arange(n_cond), max_vel_idx, :]
-        Data_prep['X'].append(muscle_force_at_peak_vel)
+        #muscle_force_at_peak_vel = muscle_force[np.arange(n_cond), max_vel_idx, :]
+        #Data_prep['X'].append(muscle_force_at_peak_vel)
         
 
         # low d behavior
         # TODO: need to for the pca over all phases...
-        pca = PCA(n_components=6)
-        X_pca = pca.fit_transform(muscle_force_at_peak_vel)
-        X_pca = X_pca[:, :2]
-        Data_prep['X_ldim'].append(X_pca)
+        #pca = PCA(n_components=6)
+        #X_pca = pca.fit_transform(muscle_force_at_peak_vel)
+        #X_pca = X_pca[:, :2]
+        #Data_prep['X_ldim'].append(X_pca)
+
+
+        cartesian_force = np.array(data[i]['endpoint_force'])
+        n_cond = cartesian_force.shape[0]
+        cartesian_force_at_peak_vel = cartesian_force[np.arange(n_cond), max_vel_idx, :]
+        Data_prep['X'].append(cartesian_force_at_peak_vel)
 
         #dT = 0.01
         #acc = np.diff(vel,axis=1)/dT
