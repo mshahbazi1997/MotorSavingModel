@@ -71,6 +71,7 @@ class CentreOutFF(mn.environment.Environment):
     elif (condition=='test'): # centre-out reaches to each target
 
       angle_set = np.deg2rad(np.arange(0,360,45)) # 8 directions
+      #angle_set = np.deg2rad(np.array([0,45,60,75,90,105,120,135,180,225,315])) 
       reps        = int(np.ceil(batch_size / len(angle_set)))
       angle       = np.tile(angle_set, reps=reps)
       batch_size  = reps * len(angle_set)

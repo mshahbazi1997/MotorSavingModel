@@ -25,7 +25,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
   interval = 1000
   num_hidden = 128
   catch_trial_perc = 50
-  all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2'])
+  all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2','NF3','FF3'])
   
 
   output_folder = create_directory(directory_name=directory_name)
@@ -56,7 +56,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
       cfg = json.load(open(cfg_file,'r'))
       env = load_env(CentreOutFF,cfg)
       policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 
-                      freeze_output_layer=True, freeze_input_layer=True)
+                      freeze_output_layer=True, freeze_input_layer=True, freeze_bias_hidden=True, freeze_h0=True) # just added this to see if network learn 
       policy.load_state_dict(th.load(weight_file))
 
       optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
@@ -76,7 +76,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
     cfg = json.load(open(cfg_file,'r'))
     env = load_env(CentreOutFF,cfg)
     policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 
-                    freeze_output_layer=True, freeze_input_layer=True)
+                    freeze_output_layer=True, freeze_input_layer=True,freeze_bias_hidden=True, freeze_h0=True) # just added this to see if network learn
     policy.load_state_dict(th.load(weight_file))
 
     optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
@@ -307,7 +307,7 @@ if __name__ == "__main__":
       #                        [1, 1e-4, 4e-6, 3e-5, 2e-2, 2e2],
       #                        [1, 1e-4, 5e-5, 3e-5, 2e-2, 2e2]])
 
-      #train(1,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)
+      #train(0,ff_coefficient,phase,continue_train=continue_train,n_batch=n_batch,directory_name=directory_name)
       while len(iter_list) > 0:
          these_iters = iter_list[0:n_jobs]
          iter_list = iter_list[n_jobs:]

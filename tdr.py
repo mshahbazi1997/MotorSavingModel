@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.decomposition import PCA
 
-def get_data(data,phases,go_cue_idx=10):
+def get_data(data,phases,go_cue_idx=10,force_idx=22):
     """
     data: list of data
     phases: list of phases
@@ -24,6 +24,8 @@ def get_data(data,phases,go_cue_idx=10):
     
         vel_norm = np.linalg.norm(vel,axis=-1)
         max_vel_idx = np.argmax(vel_norm,axis=1)
+        max_vel_idx = np.zeros_like(max_vel_idx)
+        max_vel_idx[:] = force_idx
 
         #muscle_force = np.array(data[i]['all_force'])
         #n_cond = muscle_force.shape[0]

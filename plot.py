@@ -29,22 +29,29 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
     target_x = target_xy[:, -1, 0]
     target_y = target_xy[:, -1, 1]
 
+    n_reach = target_xy.shape[0]
+
     ax.set_ylim([0.3, 0.65])
     ax.set_xlim([-0.3, 0.])
 
     plotor = mn.plotor.plot_pos_over_time
     plotor(axis=ax, cart_results=xy)
 
-    ax.scatter(target_x, target_y)
+    angle_set = np.deg2rad(np.arange(0, 360, 45))  # 8 directions
+    #angle_set = np.deg2rad(np.array([0,45,60,75,90,105,120,135,180,225,315]))
+    color_list = [plt.cm.brg(cond / (2 * np.pi)) for cond in angle_set]
+
+    for i in range(n_reach):
+        ax.scatter(target_x[i], target_y[i],color=color_list[i])
 
     # plot the line the connect initial and final positions
-    for i in range(8):
+    for i in range(n_reach):
         ax.plot([xy[i, 0, 0], target_xy[i, -1, 0]], [xy[i, 0, 1], target_xy[i, -1, 1]], color='k', alpha=0.2, linewidth=0.5,linestyle='--')
 
     # plot lateral deviation line
     if plot_lat:
         _, init, endp, _ = calculate_lateral_deviation(xy, target_xy)
-        for i in range(8):
+        for i in range(n_reach):
             ax.plot([init[i, 0], endp[i, 0]], [init[i, 1], endp[i, 1]], color='b', alpha=1, linewidth=0.5,linestyle='-')
 
 
@@ -55,7 +62,7 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
         idx = np.argmax(vel_norm, axis=1)
         xy_peakvel = xy[np.arange(xy.shape[0]), idx, :]
 
-        for i in range(8):
+        for i in range(n_reach):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
 

@@ -3,7 +3,7 @@ import torch as th
 
 class Policy(th.nn.Module):
     def __init__(self, input_dim: int, hidden_dim: int, output_dim: int, device, freeze_output_layer=False, 
-                 learn_h0=True, freeze_input_layer=False):
+                 learn_h0=True, freeze_input_layer=False,freeze_bias_hidden=False,freeze_h0=False):
         super().__init__()
         self.device = device
         self.hidden_dim = hidden_dim
@@ -19,6 +19,11 @@ class Policy(th.nn.Module):
         if freeze_input_layer:
             for name, param in self.gru.named_parameters():
                 if name == "weight_ih_l0" or name == "bias_ih_l0":
+                    param.requires_grad = False
+
+        if freeze_bias_hidden:
+            for name, param in self.gru.named_parameters():
+                if name == "bias_hh_l0":
                     param.requires_grad = False
 
         # the default initialization in torch isn't ideal
@@ -39,6 +44,11 @@ class Policy(th.nn.Module):
                 raise ValueError
         if learn_h0:
             self.h0 = th.nn.Parameter(th.zeros(self.n_layers, 1, hidden_dim), requires_grad=True)
+
+        if freeze_h0:
+            for name, param in self.named_parameters():
+                if name == "h0":
+                    param.requires_grad = False
         
         self.to(device)
 
