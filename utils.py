@@ -89,23 +89,44 @@ def load_policy(env,modular=0,freeze_output_layer=False, freeze_input_layer=Fals
         from motornet.policy import ModularPolicyGRU
 
 
-        # PMd, M1, S1, Spinal
-        vision_mask = [0.2, 0.02, 0, 0]
-        proprio_mask = [0, 0, 0, 0.5]
-        task_mask = [0.2, 0.02, 0, 0]
-        connectivity_mask = np.array([[1, 0.2, 0.02, 0],
-                                        [0.2, 1, 0.2, 0.02],
-                                        [0.02, 0.02, 1, 0.2],
-                                        [0, 0.2, 0.02, 1]])
-        connectivity_delay = np.array([[0, 1, 1, 1, 1],
-                                        [1, 0, 1, 1, 1],
-                                        [1, 1, 0, 1, 1],
-                                        [1, 1, 1, 0, 1],
-                                        [1, 1, 1, 1, 0]])
+        # # PMd, M1, S1, Spinal
+        # vision_mask = [0.2, 0.02, 0, 0]
+        # proprio_mask = [0, 0, 0, 0.5]
+        # task_mask = [0.2, 0.02, 0, 0]
+        # connectivity_mask = np.array([[1, 0.2, 0.02, 0],
+        #                                 [0.2, 1, 0.2, 0.02],
+        #                                 [0.02, 0.02, 1, 0.2],
+        #                                 [0, 0.2, 0.02, 1]])
+        # connectivity_delay = np.array([[0, 1, 1, 1, 1],
+        #                                 [1, 0, 1, 1, 1],
+        #                                 [1, 1, 0, 1, 1],
+        #                                 [1, 1, 1, 0, 1],
+        #                                 [1, 1, 1, 1, 0]])
+        # connectivity_delay = np.zeros_like(connectivity_mask)
+        # output_mask = [0, 0, 0, 0.5]
+        # module_sizes = [128, 128, 128, 32]
+        # spectral_scaling = 1.1
+        
+        # PFC, PMd, M1, S1, PPC, Spinal
+        proportion_excitatory = None#[0.5, 0.5, 0.5, 0.5, 0.5, 0.5]
+        vision_mask = [0, 0, 0, 0, 1, 0]
+        proprio_mask = [0, 0, 0, 0, 0, 1]
+        task_mask = [0, 0, 0, 0, 1, 0]
+        c1 = 0.2
+        c2 = 0.05
+        c3 = 0.01
+        c0 = 0.5
+        connectivity_mask = np.array([[c0, c1, c3, 0, c1, 0],
+                                    [c1, c0, c1, c3, c1, 0],
+                                    [c2, c1, c0, c1, c3, c3],
+                                    [0, 0, c3, c0, c3, c1],
+                                    [c1, c1, c3, c1, c0, 0],
+                                    [0, 0, c1, 0, 0, c0]])
+        connectivity_mask[connectivity_mask > 1] = 1
         connectivity_delay = np.zeros_like(connectivity_mask)
-        output_mask = [0, 0, 0, 0.5]
-        module_sizes = [128, 128, 128, 32]
-        spectral_scaling = 1.1
+        output_mask = [0, 0, 0, 0, 0, 1]
+        module_sizes = [128, 128, 128, 128, 128, 16]
+        spectral_scaling = 1.2
 
         # goal, vision, proprioception, go_cue
         task_dim = np.array([0,1,16]) # goal, go_cue
