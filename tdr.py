@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.decomposition import PCA
 
-def get_data(data,phases,go_cue_idx=10,force_idx=22):
+def get_data(data,phases,go_cue_idx=10,force_idx=22,index_neuron=None):
     """
     data: list of data
     phases: list of phases
@@ -55,7 +55,10 @@ def get_data(data,phases,go_cue_idx=10,force_idx=22):
         
         # neural
         go_cue_idx = go_cue_idx
-        fr = np.array(data[i]['all_hidden'])
+        if index_neuron is not None:
+            fr = np.array(data[i]['all_hidden'][:,:,index_neuron])
+        else:
+            fr = np.array(data[i]['all_hidden'])
         fr_at_go_cue = fr[:, go_cue_idx, :]
         Data_prep['Y'].append(fr_at_go_cue)
 
