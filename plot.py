@@ -66,10 +66,14 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
 
-def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,figsize=(6,10),loss_type='position',ignore=None):
+def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
 
     color_list = ['k','g','k','r']
-    fig,ax = plt.subplots(2,1,figsize=figsize)
+    if show_saving:
+        fig,ax = plt.subplots(2,1,figsize=figsize)
+    else: 
+        fig,ax = plt.subplots(1,1,figsize=figsize)
+        ax=[ax]
 
     loss = {phase: [] for phase in phases}
     for i,phase in enumerate(phases):
@@ -96,15 +100,16 @@ def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,fig
         ax[0].plot(loss[phase+'_x'],loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
         ax[0].fill_between(loss[phase+'_x'], loss[phase+'_mean'] - loss[phase+'_std'], loss[phase+'_mean'] + loss[phase+'_std'], color=color_list[i], alpha=0.5)
 
-        if phase=='FF1' or phase=='FF2':
-            ax[1].plot(loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
+        if show_saving:
+            if phase=='FF1' or phase=='FF2':
+                ax[1].plot(loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
 
-    ax[1].legend()
+    #ax[1].legend()
     ax[0].legend()
     ax[0].set_ylabel(loss_type)
-    ax[1].set_ylabel(loss_type)
+    #ax[1].set_ylabel(loss_type)
 
-    ax[0].axhline(y=np.mean(loss['NF1_mean'][:-10]), color='k', linestyle='--', linewidth=1)
+    #ax[0].axhline(y=np.mean(loss['NF1_mean'][:-10]), color='k', linestyle='--', linewidth=1)
 
     return fig, ax
 

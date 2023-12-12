@@ -48,7 +48,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
          'lateral': [],
          'muscle': [],
          'hidden': [],
-         'hidden_derivative': [],
+         'hidden_jerk': [],
          'muscle_derivative': [],
          'jerk': []}
     else:
@@ -74,7 +74,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
          'lateral': [],
          'muscle': [],
          'hidden': [],
-         'hidden_derivative': [],
+         'hidden_jerk': [],
          'muscle_derivative': [],
          'jerk': []}
   else:
@@ -129,7 +129,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
     losses['muscle'].append(loss_train['muscle'].item())
     losses['hidden'].append(loss_train['hidden'].item())
 
-    losses['hidden_derivative'].append(loss_test['hidden_derivative'].item())
+    losses['hidden_jerk'].append(loss_test['hidden_jerk'].item())
     losses['muscle_derivative'].append(loss_test['muscle_derivative'].item())
     losses['jerk'].append(loss_test['jerk'].item())
 
@@ -138,7 +138,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
       print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
 
       # save the result at every 1000 batches
-      weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
+      weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_batch={int(batch)}_weights")
       log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_log.json")
       cfg_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_cfg.json")
 
@@ -151,8 +151,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
   print("Done...")
 
 
-def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=None,calc_endpoint_force=False):
-  modular = 1
+def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=None,calc_endpoint_force=False,modular=0):
   device = th.device("cpu")
 
   # load configuration
@@ -177,7 +176,7 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=N
   return data
 
 
-def cal_loss(data, loss_weight=None, test=False):
+def cal_loss(data, loss_weight=None, test=False,dT=0.01):
   # data, max_iso_force, dt, policy, loss_weight=None, test=False
 
   loss = {
@@ -191,7 +190,8 @@ def cal_loss(data, loss_weight=None, test=False):
     'input': None,
     'recurrent': None,
     'muscle_derivative': None,
-    'hidden_derivative': None}
+    'hidden_derivative': None,
+    'hidden_jerk': None,}
 
   # Another loss version - this one is good enough (tend to produce slower movements)
   
@@ -199,13 +199,20 @@ def cal_loss(data, loss_weight=None, test=False):
   loss['muscle'] = th.mean(th.sum(data['all_force'], dim=-1))
   loss['muscle_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_force'], 1, dim=1)), dim=-1))
   loss['hidden'] = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
-  loss['hidden_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
-  loss['jerk'] = th.mean(th.sum(th.square(th.diff(data['vel'],n=2,dim=1)), dim=-1))
+  #loss['hidden_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], 1, dim=1)), dim=-1))
+  #loss['jerk'] = th.mean(th.sum(th.square(th.diff(data['vel'],n=2,dim=1)), dim=-1))
+  loss['hidden_jerk'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], 3, dim=1) / th.pow(th.tensor(dT), 3)), dim=-1))
+  loss['jerk'] = th.mean(th.sum(th.square(th.diff(data['vel'], 2, 1) / th.square(th.tensor(dT))), dim=-1))
 
   if loss_weight is None:
      #loss_weight = [1, 1e-4, 1e-4, 5e-5, 3e-2, 0] # this one works very nicely
-     # position, muscle, muscle_derivative, hidden, hidden_derivative, jerk
-     loss_weight = [1, 1e-4, 1e-5, 3e-5, 2e-2, 2e2] 
+
+
+     ## position, muscle, muscle_derivative, hidden, hidden_derivative, jerk
+     #loss_weight = [1, 1e-4, 1e-5, 3e-5, 2e-2, 2e2] # Mahdiyar's version
+
+     # position, muscle, muscle_derivative, hidden, hidden_jerk, jerk
+     loss_weight = [1e2, 1e-1, 0, 1e-2, 2e10, 1e-5]  # Jon's version  
 
 
   loss['overall'] = \
@@ -213,7 +220,7 @@ def cal_loss(data, loss_weight=None, test=False):
    loss_weight[1]*loss['muscle'] + \
    loss_weight[2]*loss['muscle_derivative'] + \
    loss_weight[3]*loss['hidden'] + \
-   loss_weight[4]*loss['hidden_derivative'] + \
+   loss_weight[4]*loss['hidden_jerk'] + \
    loss_weight[5]*loss['jerk']
 
   if test:
@@ -310,7 +317,9 @@ if __name__ == "__main__":
       phase = sys.argv[3] # growing_up or anything else
       n_batch = int(sys.argv[4])
       directory_name = sys.argv[5]
-      continue_train = int(sys.argv[6]) if len(sys.argv) > 6 else 0
+      modular = int(sys.argv[6])
+      continue_train = int(sys.argv[7]) if len(sys.argv) > 7 else 0
+      
 
 
       iter_list = range(16)
@@ -325,6 +334,5 @@ if __name__ == "__main__":
       while len(iter_list) > 0:
          these_iters = iter_list[0:n_jobs]
          iter_list = iter_list[n_jobs:]
-         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,continue_train=continue_train,n_batch=n_batch,directory_name=directory_name)  # ,loss_weight=loss_weight[1]
-                                                     for iteration in these_iters)
+         result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,continue_train=continue_train,n_batch=n_batch,directory_name=directory_name) for iteration in these_iters)
 
