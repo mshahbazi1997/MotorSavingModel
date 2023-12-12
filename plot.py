@@ -271,3 +271,41 @@ def plot_Gs(G,grid = None,labels=[],titles=[],figsize=(12,12),vmin=None, vmax=No
         plt.xticks(np.arange(n_cond),labels)
         plt.yticks(np.arange(n_cond),labels)
     
+def plot_epforce(data,label,figsize=(10,15)):
+    fg, ax = plt.subplots(nrows=8,ncols=1,figsize=figsize)
+
+    color_list = ['blue','orange','red','green']
+    style = ['-','--','-.',':']
+
+    x = np.linspace(0, 1, np.shape(data[0]['endpoint_force'])[1])
+
+    max_force = 0
+    min_force = 0
+    for i in range(8):
+        for j in range(len(data)):
+            ep = np.array(data[j]['endpoint_force'][i,:,:])
+            vel = np.array(data[j]['vel'][i,:,:])
+    
+            vel_norm = np.linalg.norm(vel,axis=-1)
+            max_vel_idx = np.argmax(vel_norm)/100
+
+
+            if np.max(ep)>max_force:
+                max_force = np.max(ep)
+            if np.min(ep)<min_force:
+                min_force = np.min(ep)
+            
+            ax[i].plot(x,ep[:,0],color=color_list[0],label=label[j],linestyle=style[j])
+            ax[i].plot(x,ep[:,1],color=color_list[1],label=label[j],linestyle=style[j])
+
+            ax[i].axvline(x=max_vel_idx, color='k',linestyle=style[j])
+
+
+        ax[i].axhline(y=00, color='k')
+        ax[i].set_ylabel('Force [N]')
+
+    for i in range(8):
+        ax[i].set_ylim([-0.5+min_force,max_force+0.5])
+    ax[i].set_xlabel('Time [s]')
+    ax[0].legend()
+    return fg, ax

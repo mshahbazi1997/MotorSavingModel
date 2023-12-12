@@ -1,6 +1,6 @@
 import os
 import sys 
-from utils import create_directory, load_env
+from utils import create_directory, load_env, load_policy
 from utils import calculate_angles_between_vectors, calculate_lateral_deviation
 import motornet as mn
 from task import CentreOutFF
@@ -17,6 +17,7 @@ from motornet.policy import ModularPolicyGRU
 
 
 def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_batch=50000,directory_name=None,loss_weight=None):
+  modular = 1
   """
   args:
     continue_train (int 0/1):
@@ -25,7 +26,6 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
 
   device = th.device("cpu")
   interval = 1000
-  num_hidden = 128
   catch_trial_perc = 50
   all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2','NF3','FF3'])
   
@@ -37,39 +37,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
   if continue_train==0:
     if phase=='growing_up':
       env = load_env(CentreOutFF)
-      #policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device)
-
-      # try new policy
-      # PMd, M1, S1, Spinal
-      vision_mask = [0.2, 0.02, 0, 0]
-      proprio_mask = [0, 0, 0, 0.5]
-      task_mask = [0.2, 0.02, 0, 0]
-      connectivity_mask = np.array([[1, 0.2, 0.02, 0],
-                                    [0.2, 1, 0.2, 0.02],
-                                    [0.02, 0.02, 1, 0.2],
-                                    [0, 0.2, 0.02, 1]])
-      connectivity_delay = np.array([[0, 1, 1, 1, 1],
-                                    [1, 0, 1, 1, 1],
-                                    [1, 1, 0, 1, 1],
-                                    [1, 1, 1, 0, 1],
-                                    [1, 1, 1, 1, 0]])
-      connectivity_delay = np.zeros_like(connectivity_mask)
-      output_mask = [0, 0, 0, 0.5]
-      module_sizes = [128, 128, 128, 32]
-      spectral_scaling = 1.1
-
-      # goal, vision, proprioception, go_cue
-      task_dim = np.array([0,1,16]) # goal, go_cue
-      vision_dim = np.array([2,3])
-      proprio_dim = np.arange(env.get_proprioception().shape[1]) + vision_dim[-1] + 1
-
-      policy = ModularPolicyGRU(env.observation_space.shape[0], module_sizes, env.n_muscles, 
-                                vision_dim=vision_dim, proprio_dim=proprio_dim, task_dim=task_dim, 
-                                vision_mask=vision_mask, proprio_mask=proprio_mask, task_mask=task_mask,
-                                connectivity_mask=connectivity_mask, output_mask=output_mask, connectivity_delay=connectivity_delay,
-                                spectral_scaling=spectral_scaling, device=device, activation='tanh')
-
-
+      policy = load_policy(env,modular=modular)
 
       optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
       batch_size = 128
@@ -89,8 +57,10 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
                               next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_cfg.json')))
       cfg = json.load(open(cfg_file,'r'))
       env = load_env(CentreOutFF,cfg)
-      policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 
-                      freeze_output_layer=True, freeze_input_layer=True, freeze_bias_hidden=True, freeze_h0=True) # just added this to see if network learn 
+
+
+      policy = load_policy(env,modular=modular,freeze_output_layer=True, freeze_input_layer=True,freeze_bias_hidden=False, freeze_h0=False)
+
       policy.load_state_dict(th.load(weight_file))
 
       optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
@@ -109,8 +79,11 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
                             next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_cfg.json')))
     cfg = json.load(open(cfg_file,'r'))
     env = load_env(CentreOutFF,cfg)
-    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 
-                    freeze_output_layer=True, freeze_input_layer=True,freeze_bias_hidden=True, freeze_h0=True) # just added this to see if network learn
+
+
+
+    policy = load_policy(env,modular=modular,freeze_output_layer=True, freeze_input_layer=True,freeze_bias_hidden=False, freeze_h0=False)
+
     policy.load_state_dict(th.load(weight_file))
 
     optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
@@ -174,6 +147,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
 
 
 def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=None,calc_endpoint_force=False):
+  modular = 1
   device = th.device("cpu")
 
   # load configuration
@@ -185,11 +159,9 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=N
   # environment and network
   env = load_env(CentreOutFF, cfg, dT=dT)
   w = th.load(weight_file)
-  num_hidden = int(w['gru.weight_ih_l0'].shape[0]/3)
-  if 'h0' in w.keys():
-    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, learn_h0=True)
-  else:
-    policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, learn_h0=False)
+
+  # load policy
+  policy = load_policy(env,modular=modular)
   policy.load_state_dict(w)
   
   

@@ -81,6 +81,51 @@ def load_env(task,cfg=None,dT=None):
 
     return env
 
+
+def load_policy(env,modular=0,freeze_output_layer=False, freeze_input_layer=False, freeze_bias_hidden=False, freeze_h0=False):
+    import torch as th
+    device = th.device("cpu")
+    if modular:
+        from motornet.policy import ModularPolicyGRU
+
+
+        # PMd, M1, S1, Spinal
+        vision_mask = [0.2, 0.02, 0, 0]
+        proprio_mask = [0, 0, 0, 0.5]
+        task_mask = [0.2, 0.02, 0, 0]
+        connectivity_mask = np.array([[1, 0.2, 0.02, 0],
+                                        [0.2, 1, 0.2, 0.02],
+                                        [0.02, 0.02, 1, 0.2],
+                                        [0, 0.2, 0.02, 1]])
+        connectivity_delay = np.array([[0, 1, 1, 1, 1],
+                                        [1, 0, 1, 1, 1],
+                                        [1, 1, 0, 1, 1],
+                                        [1, 1, 1, 0, 1],
+                                        [1, 1, 1, 1, 0]])
+        connectivity_delay = np.zeros_like(connectivity_mask)
+        output_mask = [0, 0, 0, 0.5]
+        module_sizes = [128, 128, 128, 32]
+        spectral_scaling = 1.1
+
+        # goal, vision, proprioception, go_cue
+        task_dim = np.array([0,1,16]) # goal, go_cue
+        vision_dim = np.array([2,3])
+        proprio_dim = np.arange(env.get_proprioception().shape[1]) + vision_dim[-1] + 1
+
+        policy = ModularPolicyGRU(env.observation_space.shape[0], module_sizes, env.n_muscles, 
+                                  vision_dim=vision_dim, proprio_dim=proprio_dim, task_dim=task_dim, 
+                                  vision_mask=vision_mask, proprio_mask=proprio_mask, task_mask=task_mask,
+                                  connectivity_mask=connectivity_mask, output_mask=output_mask, connectivity_delay=connectivity_delay,
+                                  spectral_scaling=spectral_scaling, device=device, activation='tanh')
+    else:
+        num_hidden = 128
+        from policy import Policy
+        policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 
+                        freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer, 
+                        freeze_bias_hidden=freeze_bias_hidden, freeze_h0=freeze_h0)
+    return policy
+        
+
 def calculate_angles_between_vectors(vel, tg, xy):
     """
     Calculate angles between vectors X2 and X3.
