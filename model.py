@@ -16,8 +16,7 @@ from motornet.policy import ModularPolicyGRU
 
 
 
-def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_batch=50000,directory_name=None,loss_weight=None):
-  modular = 1
+def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_batch=50000,directory_name=None,loss_weight=None,modular=0):
   """
   args:
     continue_train (int 0/1):
@@ -41,15 +40,17 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
 
       optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
       batch_size = 128
-      pert_prob = 50
+      pert_prob = 0 # 50
       losses = {
          'overall': [],
          'position': [],
          'angle': [],
          'lateral': [],
          'muscle': [],
-         'hidden': []}
-
+         'hidden': [],
+         'hidden_derivative': [],
+         'muscle_derivative': [],
+         'jerk': []}
     else:
       pert_prob = 0
       phase_prev = 'growing_up' if phase not in all_phase else all_phase[all_phase.tolist().index(phase) - 1]
@@ -59,19 +60,23 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
       env = load_env(CentreOutFF,cfg)
 
 
-      policy = load_policy(env,modular=modular,freeze_output_layer=True, freeze_input_layer=True,freeze_bias_hidden=False, freeze_h0=False)
+      policy = load_policy(env,modular=modular,freeze_output_layer=False, freeze_input_layer=False,freeze_bias_hidden=False, freeze_h0=False)
 
       policy.load_state_dict(th.load(weight_file))
 
-      optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
-      batch_size = 200
+      #optimizer = th.optim.SGD(policy.parameters(), lr=0.005)
+      optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
+      batch_size = 128 # 200
       losses = {
          'overall': [],
          'position': [],
          'angle': [],
          'lateral': [],
          'muscle': [],
-         'hidden': []}
+         'hidden': [],
+         'hidden_derivative': [],
+         'muscle_derivative': [],
+         'jerk': []}
   else:
     pert_prob = 0
     # currently only for continue training in NF1/FF1/NF2/FF2
@@ -79,8 +84,6 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
                             next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_cfg.json')))
     cfg = json.load(open(cfg_file,'r'))
     env = load_env(CentreOutFF,cfg)
-
-
 
     policy = load_policy(env,modular=modular,freeze_output_layer=True, freeze_input_layer=True,freeze_bias_hidden=False, freeze_h0=False)
 
@@ -94,8 +97,6 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
     losses = json.load(open(log_file,'r'))
 
 
-  
-  
   #for batch in range(n_batch):
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
@@ -127,6 +128,10 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
     losses['lateral'].append(loss_test['lateral'].item())
     losses['muscle'].append(loss_train['muscle'].item())
     losses['hidden'].append(loss_train['hidden'].item())
+
+    losses['hidden_derivative'].append(loss_test['hidden_derivative'].item())
+    losses['muscle_derivative'].append(loss_test['muscle_derivative'].item())
+    losses['jerk'].append(loss_test['jerk'].item())
 
     # print progress
     if (batch % interval == 0) and (batch != 0):
