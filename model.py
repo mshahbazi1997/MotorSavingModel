@@ -11,6 +11,8 @@ import json
 from joblib import Parallel, delayed
 from pathlib import Path
 from tqdm import tqdm
+from motornet.policy import ModularPolicyGRU
+
 
 
 
@@ -35,7 +37,39 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',continue_train=0,n_bat
   if continue_train==0:
     if phase=='growing_up':
       env = load_env(CentreOutFF)
-      policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device)
+      #policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device)
+
+      # try new policy
+      # PMd, M1, S1, Spinal
+      vision_mask = [0.2, 0.02, 0, 0]
+      proprio_mask = [0, 0, 0, 0.5]
+      task_mask = [0.2, 0.02, 0, 0]
+      connectivity_mask = np.array([[1, 0.2, 0.02, 0],
+                                    [0.2, 1, 0.2, 0.02],
+                                    [0.02, 0.02, 1, 0.2],
+                                    [0, 0.2, 0.02, 1]])
+      connectivity_delay = np.array([[0, 1, 1, 1, 1],
+                                    [1, 0, 1, 1, 1],
+                                    [1, 1, 0, 1, 1],
+                                    [1, 1, 1, 0, 1],
+                                    [1, 1, 1, 1, 0]])
+      connectivity_delay = np.zeros_like(connectivity_mask)
+      output_mask = [0, 0, 0, 0.5]
+      module_sizes = [128, 128, 128, 32]
+      spectral_scaling = 1.1
+
+      # goal, vision, proprioception, go_cue
+      task_dim = np.array([0,1,16]) # goal, go_cue
+      vision_dim = np.array([2,3])
+      proprio_dim = np.arange(env.get_proprioception().shape[1]) + vision_dim[-1] + 1
+
+      policy = ModularPolicyGRU(env.observation_space.shape[0], module_sizes, env.n_muscles, 
+                                vision_dim=vision_dim, proprio_dim=proprio_dim, task_dim=task_dim, 
+                                vision_mask=vision_mask, proprio_mask=proprio_mask, task_mask=task_mask,
+                                connectivity_mask=connectivity_mask, output_mask=output_mask, connectivity_delay=connectivity_delay,
+                                spectral_scaling=spectral_scaling, device=device, activation='tanh')
+
+
 
       optimizer = th.optim.Adam(policy.parameters(), lr=0.001,eps=1e-7)
       batch_size = 128
@@ -236,7 +270,10 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',f
 
   while not terminated:
       # Append data to respective lists
-      data['all_hidden'].append(h[0, :, None, :])      
+      if len(h.shape)==2:
+        data['all_hidden'].append(h[:, None, :])
+      else:
+        data['all_hidden'].append(h[0, :, None, :])      
       data['all_muscle'].append(info['states']['muscle'][:, 0, None, :])
       data['all_force'].append(info['states']['muscle'][:, 6, None, :])
       data['all_endpoint'].append(info['endpoint_load'][:, None, :])
