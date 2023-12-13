@@ -59,7 +59,7 @@ class Policy(th.nn.Module):
         y, h = self.gru(x[:, None, :], h0)
         #hidden_noise         = 1e-3
         u = self.sigmoid(self.fc(y)).squeeze(dim=1)
-        return u, h
+        return u, h[0]
     
     def init_hidden(self, batch_size):
         

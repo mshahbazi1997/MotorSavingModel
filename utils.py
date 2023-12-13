@@ -139,6 +139,7 @@ def load_policy(env,modular=0,freeze_output_layer=False, freeze_input_layer=Fals
                                   connectivity_mask=connectivity_mask, output_mask=output_mask, connectivity_delay=connectivity_delay,
                                   spectral_scaling=spectral_scaling, device=device, activation='tanh')
     else:
+        #num_hidden = 128
         num_hidden = 128
         from policy import Policy
         policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 

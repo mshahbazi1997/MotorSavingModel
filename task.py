@@ -176,6 +176,7 @@ class CentreOutFF(mn.environment.Environment):
     
     self.effector.step(noisy_action,endpoint_load=self.endpoint_load) # **kwargs
 
+
     # Calculate endpoiont_load
     vel = self.states["cartesian"][:,2:]
 
@@ -259,11 +260,7 @@ class CentreOutFF(mn.environment.Environment):
       self.endpoint_force = endpoint_force
     else:
       self.endpoint_force = th.zeros((self.batch_size,2)).to(self.device)
-
-
-    
-    
-
+  
     # specify go cue time
     mask = self.elapsed >= (self.go_cue_time + (self.vision_delay-1) * self.dt)
     self.go_cue[mask] = 1
