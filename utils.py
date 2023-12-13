@@ -82,7 +82,7 @@ def load_env(task,cfg=None,dT=None):
     return env
 
 
-def load_policy(env,modular=0,freeze_output_layer=False, freeze_input_layer=False, freeze_bias_hidden=False, freeze_h0=False):
+def load_policy(env,modular=0,freeze_output_layer=False, freeze_input_layer=False, freeze_bias_hidden=False, freeze_h0=False, weight_file=None):
     import torch as th
     device = th.device("cpu")
     if modular:
@@ -145,6 +145,9 @@ def load_policy(env,modular=0,freeze_output_layer=False, freeze_input_layer=Fals
         policy = Policy(env.observation_space.shape[0], num_hidden, env.n_muscles, device=device, 
                         freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer, 
                         freeze_bias_hidden=freeze_bias_hidden, freeze_h0=freeze_h0)
+        
+    if weight_file is not None:
+        policy.load_state_dict(th.load(weight_file,map_location=device))
     return policy
         
 

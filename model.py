@@ -42,8 +42,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
 
   # load environment and policy
   env = load_env(CentreOutFF,cfg)
-  policy = load_policy(env,modular=modular,freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer)
-  policy.load_state_dict(th.load(weight_file))
+  policy = load_policy(env,modular=modular,freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer,weight_file=weight_file)
   optimizer = th.optim.Adam(policy.parameters(), lr=0.001)
   batch_size = 128
   pert_prob = 0 # 50
@@ -191,7 +190,7 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',f
       'xy': [],
       'tg': [],
       'vel': [],
-      'all_actions': [],
+      'all_action': [],
       'all_hidden': [],
       'all_muscle': [],
       'all_force': [],
@@ -204,14 +203,16 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',f
 
       action, h = policy(obs, h)
       obs, _, terminated, _, info = env.step(action=action)
- 
-      data['all_hidden'].append(h[:, None, :]) 
+      if len(h.shape) == 3:
+        data['all_hidden'].append(h[0, :, None, :])
+      else:
+        data['all_hidden'].append(h[:, None, :])
       data['all_muscle'].append(info['states']['muscle'][:, 0, None, :])
-      data['all_force'].append(info['states']['muscle'][:, 6, None, :])
+      data['all_force'].append(info['states']['muscle'][:, -1, None, :])
       data['xy'].append(info["states"]["fingertip"][:, None, :])
       data['tg'].append(info["goal"][:, None, :])
       data['vel'].append(info["states"]["cartesian"][:, None, 2:])  # velocity
-      data['all_actions'].append(action[:, None, :])
+      data['all_action'].append(action[:, None, :])
       data['endpoint_load'].append(info['endpoint_load'][:, None, :])
       data['endpoint_force'].append(info['endpoint_force'][:, None, :])
       
@@ -272,11 +273,11 @@ if __name__ == "__main__":
       #train(0,ff_coefficient,phase,continue_train=continue_train,n_batch=n_batch,directory_name=directory_name)
 
       if train_single:
-        train(0,ff_coefficient,phase,continue_train=0,n_batch=n_batch,directory_name=directory_name,modular=modular)
+        train(0,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,modular=modular)
       else:
         iter_list = range(16)
         n_jobs = 16
         while len(iter_list) > 0:
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,continue_train=0,n_batch=n_batch,directory_name=directory_name,modular=modular) for iteration in these_iters)
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,modular=modular) for iteration in these_iters)
