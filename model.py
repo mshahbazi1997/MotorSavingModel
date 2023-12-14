@@ -16,7 +16,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
   args:
   """
 
-  interval = 1000
+  interval = 200
   catch_trial_perc = 50
   all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2','NF3','FF3'])
   output_folder = create_directory(directory_name=directory_name)
@@ -24,46 +24,52 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
   print("{}...".format(model_name))
 
 
-  if phase=='growing_up':
-    cfg = None
-    weight_file = None
-    freeze_output_layer = False
-    freeze_input_layer= False
-
-  else:
-    phase_prev = 'growing_up' if phase not in all_phase else all_phase[all_phase.tolist().index(phase) - 1]
-    weight_file, cfg_file = (next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_weights')),
-                             next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_cfg.json')))
+  # check if we have the file already related to this phase
+  # if so, the continue training from there
+  weight_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_weights'), None)
+  if weight_file is not None:
+    cfg_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_cfg.json'))
     cfg = json.load(open(cfg_file,'r'))
 
-    freeze_output_layer = True
-    freeze_input_layer= True
+    # open loss file
+    loss_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_log.json'))
+    losses = json.load(open(loss_file,'r'))
 
+  else:
+    cfg = None
+    weight_file = None
+    if phase != 'growing_up':
+      phase_prev = 'growing_up' if phase not in all_phase else all_phase[all_phase.tolist().index(phase) - 1]
+      weight_file, cfg_file = (next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_weights')),
+                              next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_cfg.json')))
+      cfg = json.load(open(cfg_file,'r'))
+
+    losses = {
+      'overall': [],
+      'position': [],
+      'jerk': [],
+      'muscle': [],
+      'muscle_derivative': [],
+      'hidden': [],
+      'hidden_derivative': [],
+      'hidden_jerk': [],
+      'angle': [],
+      'lateral': []
+      }
 
   # load environment and policy
+  freeze_output_layer = freeze_input_layer = (phase != 'growing_up')
   env = load_env(CentreOutFF,cfg)
   policy = load_policy(env,modular=modular,freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer,weight_file=weight_file)
   optimizer = th.optim.Adam(policy.parameters(), lr=0.001)
   batch_size = 128
-  pert_prob = 0 # 50
 
-  losses = {
-    'overall': [],
-    'position': [],
-    'jerk': [],
-    'muscle': [],
-    'muscle_derivative': [],
-    'hidden': [],
-    'hidden_derivative': [],
-    'hidden_jerk': [],
-    'angle': [],
-    'lateral': []
-    }
+  
 
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
     # train the network
-    data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False,pert_prob=pert_prob)
+    data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
     overall_loss, _ = cal_loss(data, test=False, loss_weight=loss_weight)
     
     
@@ -120,7 +126,7 @@ def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=N
   policy.load_state_dict(w)
   
   # Run episode
-  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True,pert_prob=0,calc_endpoint_force=calc_endpoint_force)
+  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True,calc_endpoint_force=calc_endpoint_force)
 
 
   return data
@@ -151,8 +157,8 @@ def cal_loss(data, loss_weight=None, test=False):
      # position, jerk, muscle, muscle_derivative, hidden, hidden_derivative, hidden_jerk
 
      loss_weight = [1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 2e2, 0] # Mahdiyar's version
+     loss_weight = [1e1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 2e2, 0] # Mahdiyar's version
      #loss_weight = [1e2, 1e-5*1e4, 1e-1, 0, 1e-2, 0, 2e-10*1e6] # Jon's version
-     #loss_weight = [1e1, 0*1e4, 1e-1, 0, 1e-2, 0, 2e-10*1e6]
 
      
   loss_weighted = {
@@ -180,10 +186,10 @@ def cal_loss(data, loss_weight=None, test=False):
   return overall_loss, loss_weighted
 
 
-def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,K=1,B=-1,detach=False,pert_prob=0.0,calc_endpoint_force=False):
+def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,K=170,B=-1,detach=False,calc_endpoint_force=False):
   h = policy.init_hidden(batch_size=batch_size)
   obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, 
-                        is_channel=is_channel,K=K,B=B,pert_prob=pert_prob,calc_endpoint_force=calc_endpoint_force)
+                        is_channel=is_channel,K=K,B=B,calc_endpoint_force=calc_endpoint_force)
   terminated = False
 
   # Initialize a dictionary to store lists
@@ -196,14 +202,15 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',f
       'all_muscle': [],
       'all_force': [],
       'endpoint_load': [],
-      'endpoint_force': [] # applied by the subject
+      'endpoint_force': []
   }
 
   while not terminated:
-      
 
       action, h = policy(obs, h)
-      obs, _, terminated, _, info = env.step(action=action)
+      obs, terminated, info = env.step(action=action)
+
+
       if len(h.shape) == 3:
         data['all_hidden'].append(h[0, :, None, :])
       else:

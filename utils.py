@@ -4,7 +4,6 @@ import motornet as mn
 import numpy as np
 from scipy.optimize import minimize
 
-
 def create_directory(directory_name=None):
     if directory_name is None:
         directory_name = datetime.datetime.now().date().isoformat()
