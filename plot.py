@@ -106,6 +106,8 @@ def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,fig
 
     #ax[1].legend()
     ax[0].legend()
+    ax[0].set_yscale('log')
+
     ax[0].set_ylabel(loss_type)
     #ax[1].set_ylabel(loss_type)
 

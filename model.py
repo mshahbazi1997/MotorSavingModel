@@ -151,7 +151,8 @@ def cal_loss(data, loss_weight=None, test=False):
      # position, jerk, muscle, muscle_derivative, hidden, hidden_derivative, hidden_jerk
 
      loss_weight = [1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 2e2, 0] # Mahdiyar's version
-     loss_weight = [1e2, 1e-5*1e4, 1e-1, 0, 1e-2, 0, 2e-10*1e6] # Jon's version
+     #loss_weight = [1e2, 1e-5*1e4, 1e-1, 0, 1e-2, 0, 2e-10*1e6] # Jon's version
+     #loss_weight = [1e1, 0*1e4, 1e-1, 0, 1e-2, 0, 2e-10*1e6]
 
      
   loss_weighted = {
