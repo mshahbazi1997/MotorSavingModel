@@ -6,8 +6,6 @@ import json
 from utils import *
 
 
-
-
 def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
     """
         loss_type: 'position_loss' or 'hidden_loss' or 'muscle_loss' or 'overall_loss'
@@ -116,10 +114,10 @@ def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,fig
     return fig, ax
 
 
-def plot_activation(all_hidden, all_muscles,figsize=(10,15)):
+def plot_activation(all_hidden, all_muscles,figsize=(10,15),dt=0.01):
     fg, ax = plt.subplots(nrows=8,ncols=2,figsize=figsize)
 
-    x = np.linspace(0, 1, np.shape(all_hidden)[1])
+    x = np.linspace(0, np.shape(all_hidden)[1]*dt, np.shape(all_hidden)[1])
 
     for i in range(8):
         ax[i,0].plot(x,np.array(all_muscles[i,:,:]))
@@ -165,12 +163,12 @@ def plot_traj(X_latent_list, plot_scatter=1, marker=['x','o'],alpha=[1,0.5], whi
 
     return fig, ax
 
-def plot_force(data,label,figsize=(10,15)):
+def plot_force(data,label,figsize=(10,15),dt=0.01):
     fg, ax = plt.subplots(nrows=8,ncols=1,figsize=figsize)
 
     color_list = ['m','c','g','b','r','y','k','orange']
 
-    x = np.linspace(0, 1, np.shape(data[0]['all_endpoint'])[1])
+    x = np.linspace(0, np.shape(data[0]['all_endpoint'])[1]*dt, np.shape(data[0]['all_endpoint'])[1])
 
     max_force = 0
     max_vel = 0
@@ -196,7 +194,7 @@ def plot_force(data,label,figsize=(10,15)):
     ax[0].legend()
     return fg, ax
 
-def plot_kinematic(vel,xy,tg,figsize=(10,15)):
+def plot_kinematic(vel,xy,tg,figsize=(10,15),dt=0.01):
     """
     """
     fg, ax = plt.subplots(nrows=8,ncols=2,figsize=figsize)
@@ -223,7 +221,7 @@ def plot_kinematic(vel,xy,tg,figsize=(10,15)):
 
     color_list = ['blue','orange','red','green']
 
-    x = np.linspace(0, 1, np.shape(vel)[1])
+    x = np.linspace(0, np.shape(vel)[1]*dt, np.shape(vel)[1])
 
     for i in range(8):
 
@@ -267,13 +265,13 @@ def plot_Gs(G,grid = None,labels=[],titles=[],figsize=(12,12),vmin=None, vmax=No
         plt.xticks(np.arange(n_cond),labels)
         plt.yticks(np.arange(n_cond),labels)
     
-def plot_epforce(data,label,figsize=(10,15)):
+def plot_epforce(data,label,figsize=(10,15),dt=0.01):
     fg, ax = plt.subplots(nrows=8,ncols=1,figsize=figsize)
 
     color_list = ['blue','orange','red','green']
     style = ['-','--','-.',':']
 
-    x = np.linspace(0, 1, np.shape(data[0]['endpoint_force'])[1])
+    x = np.linspace(0, np.shape(data[0]['endpoint_force'])[1]*dt, np.shape(data[0]['endpoint_force'])[1])
 
     max_force = 0
     min_force = 0

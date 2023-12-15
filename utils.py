@@ -45,7 +45,7 @@ def load_env(task,cfg=None,dT=None):
         # Define task and the effector
         effector = mn.effector.RigidTendonArm26(muscle=mn.muscle.RigidTendonHillMuscle())
 
-        max_ep_duration = 1
+        max_ep_duration = 2
     else:
         name = cfg['name']
         # effector
@@ -124,13 +124,19 @@ def load_policy(env,modular=0,freeze_output_layer=False, freeze_input_layer=Fals
         connectivity_mask[connectivity_mask > 1] = 1
         connectivity_delay = np.zeros_like(connectivity_mask)
         output_mask = [0, 0, 0, 0, 0, 1]
-        module_sizes = [128, 128, 128, 128, 128, 16]
-        spectral_scaling = 1.2
+        #module_sizes = [128, 128, 128, 128, 128, 16]
+        module_sizes = [64, 64, 64, 64, 64, 16]
+
+        spectral_scaling = 1.
 
         # goal, vision, proprioception, go_cue
         task_dim = np.array([0,1,16]) # goal, go_cue
         vision_dim = np.array([2,3])
         proprio_dim = np.arange(env.get_proprioception().shape[1]) + vision_dim[-1] + 1
+
+        vision_dim = np.arange(env.get_vision().shape[1])
+        proprio_dim = np.arange(env.get_proprioception().shape[1]) + vision_dim[-1] + 1
+        task_dim = np.arange(5) + proprio_dim[-1] + 1
 
         policy = ModularPolicyGRU(env.observation_space.shape[0], module_sizes, env.n_muscles, 
                                   vision_dim=vision_dim, proprio_dim=proprio_dim, task_dim=task_dim, 
