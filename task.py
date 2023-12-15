@@ -104,10 +104,11 @@ class CentreOutFF(mn.environment.Environment):
     # specify go cue time
     self.go_cue_time[self.catch_trial==1] = self.max_ep_duration
     self.go_cue = th.zeros((batch_size,1)).to(self.device)
+    self.init = self.states['fingertip']
 
     obs = self.get_obs(deterministic=deterministic)
 
-    self.init = self.states['fingertip']
+    
     
     self.endpoint_load = th.zeros((batch_size,2)).to(self.device)
     self.endpoint_force = th.zeros((batch_size,2)).to(self.device)
@@ -175,9 +176,10 @@ class CentreOutFF(mn.environment.Environment):
     self.update_obs_buffer(action=action)
 
     obs_as_list = [
-      self.goal,
       self.obs_buffer["vision"][0],  # oldest element
       self.obs_buffer["proprioception"][0],   # oldest element
+      self.goal, # goal
+      self.init, # initial position
       self.go_cue, # sepcify go cue as an input to the network
       ]
     obs = th.cat(obs_as_list, dim=-1)

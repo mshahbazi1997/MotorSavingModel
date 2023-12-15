@@ -61,8 +61,9 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
   freeze_output_layer = freeze_input_layer = (phase != 'growing_up')
   env = load_env(CentreOutFF,cfg)
   policy = load_policy(env,modular=modular,freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer,weight_file=weight_file)
-  optimizer = th.optim.Adam(policy.parameters(), lr=0.001)
-  batch_size = 128
+  optimizer = th.optim.Adam(policy.parameters(), lr=3e-3)
+  scheduler = th.optim.lr_scheduler.ExponentialLR(optimizer,  gamma=0.9999)
+  batch_size = 32
 
   
 
@@ -77,6 +78,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
     overall_loss.backward()
     th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)  # important!
     optimizer.step()
+    scheduler.step()
 
     
     # test the network
@@ -158,7 +160,7 @@ def cal_loss(data, loss_weight=None, test=False):
 
      loss_weight = [1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 2e2, 0] # Mahdiyar's version
      loss_weight = [1e1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 2e2, 0] # Mahdiyar's version
-     #loss_weight = [1e2, 1e-5*1e4, 1e-1, 0, 1e-2, 0, 2e-10*1e6] # Jon's version
+     loss_weight = [1e2, 1e-6*1e4, 1e-1, 0, 1e-2, 0, 2e-10*1e6] # Jon's version
 
      
   loss_weighted = {
