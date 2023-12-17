@@ -45,7 +45,7 @@ def load_env(task,cfg=None,dT=None):
         # Define task and the effector
         effector = mn.effector.RigidTendonArm26(muscle=mn.muscle.RigidTendonHillMuscle())
 
-        max_ep_duration = 2
+        max_ep_duration = 4
     else:
         name = cfg['name']
         # effector
