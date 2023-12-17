@@ -160,7 +160,7 @@ def cal_loss(data, loss_weight=None, test=False):
 
      loss_weight = [1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 2e2, 0] # Mahdiyar's version
      loss_weight = [1e1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 2e2, 0] # Mahdiyar's version
-     loss_weight = [1e2, 1e-6*1e4, 1e-1, 0, 1e-2, 0, 2e-10*1e6] # Jon's version
+     loss_weight = [1e2, 1e-6*1e8, 1e-1, 0, 1e-2, 0, 2e-10*1e12] # Jon's version
 
      
   loss_weighted = {
@@ -272,8 +272,8 @@ if __name__ == "__main__":
       phase = sys.argv[3] # growing_up or anything else
       n_batch = int(sys.argv[4])
       directory_name = sys.argv[5]
-      modular = int(sys.argv[6])
-      train_single = int(sys.argv[7])
+      #modular = int(sys.argv[6])
+      train_single = int(sys.argv[6])
       #continue_train = int(sys.argv[8]) if len(sys.argv) > 8 else 0
 
       #loss_weight = np.array([[1, 1e-4, 1e-5, 3e-5, 2e-2, 2e2],
@@ -283,11 +283,11 @@ if __name__ == "__main__":
       #train(0,ff_coefficient,phase,continue_train=continue_train,n_batch=n_batch,directory_name=directory_name)
 
       if train_single:
-        train(0,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,modular=modular)
+        train(0,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,modular=0)
       else:
         iter_list = range(16)
         n_jobs = 16
         while len(iter_list) > 0:
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,modular=modular) for iteration in these_iters)
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,modular=0) for iteration in these_iters)
