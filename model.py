@@ -1,6 +1,6 @@
 import os
 import sys 
-from utils import create_directory, load_env, load_policy
+from utils import create_directory, load_env, load_policy, load_stuff
 from utils import calculate_angles_between_vectors, calculate_lateral_deviation
 from task import CentreOutFF
 import torch as th
@@ -11,14 +11,14 @@ from pathlib import Path
 from tqdm import tqdm
 
 
-def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,directory_name=None,loss_weight=None,modular=0):
+def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,directory_name=None,loss_weight=None):
   """
   args:
   """
 
   interval = 200
   catch_trial_perc = 50
-  all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2','NF3','FF3'])
+  all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2'])
   output_folder = create_directory(directory_name=directory_name)
   model_name = "model{:02d}".format(model_num)
   print("{}...".format(model_name))
@@ -29,20 +29,17 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
   weight_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_weights'), None)
   if weight_file is not None:
     cfg_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_cfg.json'))
-    cfg = json.load(open(cfg_file,'r'))
 
     # open loss file
     loss_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_log.json'))
     losses = json.load(open(loss_file,'r'))
-
   else:
-    cfg = None
     weight_file = None
+    cfg_file = None
     if phase != 'growing_up':
       phase_prev = 'growing_up' if phase not in all_phase else all_phase[all_phase.tolist().index(phase) - 1]
       weight_file, cfg_file = (next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_weights')),
-                              next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_cfg.json')))
-      cfg = json.load(open(cfg_file,'r'))
+                               next(Path(output_folder).glob(f'{model_name}_phase={phase_prev}_*_cfg.json')))
 
     losses = {
       'overall': [],
@@ -59,44 +56,43 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
 
   # load environment and policy
   freeze_output_layer = freeze_input_layer = (phase != 'growing_up')
-  env = load_env(CentreOutFF,cfg)
-  policy = load_policy(env,modular=modular,freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer,weight_file=weight_file)
-  optimizer = th.optim.Adam(policy.parameters(), lr=3e-3)
-  scheduler = th.optim.lr_scheduler.ExponentialLR(optimizer,  gamma=0.9999)
-  batch_size = 32
 
-  
+  env, policy, optimizer, scheduler = load_stuff(cfg_file=cfg_file,weight_file=weight_file,phase=phase,
+                                                 freeze_output_layer=freeze_output_layer,freeze_input_layer=freeze_input_layer)
+  batch_size = 32
 
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
     # train the network
     data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
-    overall_loss, _ = cal_loss(data, test=False, loss_weight=loss_weight)
+    overall_loss, _ = cal_loss(data, loss_weight=loss_weight)
     
     
     optimizer.zero_grad() 
     overall_loss.backward()
     th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)  # important!
+
     optimizer.step()
-    scheduler.step()
+    if scheduler is not None:
+      scheduler.step()
 
-    
     # test the network
-    data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,detach=True)
-    _, loss_test = cal_loss(data,test=False,loss_weight=loss_weight)
-
-
+    data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient)
+    
     # Save losses
     losses['overall'].append(overall_loss.item())
     for key in loss_test:
       losses[key].append(loss_test[key].item())
-
+    
+    losses['angle'].append(ang_dev.item())
+    losses['lateral'].append(lat_dev.item())
 
     # print progress
     if (batch % interval == 0) and (batch != 0):
       print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
 
       # save the result at every 1000 batches
+      # save_stuff(output_folder, model_name, phase, ff_coefficient, policy, losses, env)
       weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
       log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_log.json")
       cfg_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_cfg.json")
@@ -111,30 +107,22 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=50000,director
   print("Done...")
 
 
-def test(cfg_file,weight_file,ff_coefficient=None,is_channel=False,K=1,B=-1,dT=None,calc_endpoint_force=False,modular=0):
+def test(env,policy,ff_coefficient=0,is_channel=False,K=170,B=-1):
 
-  # load configuration
-  cfg = json.load(open(cfg_file, 'r'))
-
-  if ff_coefficient is None:
-    ff_coefficient=cfg['ff_coefficient']
-    
-  # environment and network
-  env = load_env(CentreOutFF, cfg, dT=dT)
-  w = th.load(weight_file)
-
-  # load policy
-  policy = load_policy(env,modular=modular)
-  policy.load_state_dict(w)
-  
   # Run episode
-  data = run_episode(env,policy,8,0,'test',ff_coefficient=ff_coefficient,is_channel=is_channel,K=K,B=B,detach=True,calc_endpoint_force=calc_endpoint_force)
+  data = run_episode(env, policy, batch_size=8, catch_trial_perc=0, condition='test', ff_coefficient=ff_coefficient, is_channel=is_channel, K=K,B=B, detach=True, calc_endpoint_force=True)
+
+  # Calculate loss
+  _, loss_test = cal_loss(data)
+
+  # anglular deviation
+  ang_dev = np.mean(calculate_angles_between_vectors(data['vel'], data['tg'], data['xy']))
+  lat_dev = np.mean(calculate_lateral_deviation(data['xy'], data['tg'])[0])
+
+  return data, loss_test, ang_dev, lat_dev
 
 
-  return data
-
-
-def cal_loss(data, loss_weight=None, test=False):
+def cal_loss(data, loss_weight=None):
 
   loss = {
     'position': None,
@@ -158,9 +146,9 @@ def cal_loss(data, loss_weight=None, test=False):
   if loss_weight is None:
      # position, jerk, muscle, muscle_derivative, hidden, hidden_derivative, hidden_jerk
 
-     loss_weight = [1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 2e2, 0] # Mahdiyar's version
-     loss_weight = [1e1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 2e2, 0] # Mahdiyar's version
+     loss_weight = [1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 0] # Mahdiyar's version
      loss_weight = [1e2, 1e-6*1e8, 1e-1, 0, 1e-2, 0, 2e-10*1e12] # Jon's version
+     #loss_weight = [1e3, 1e-7**1e12, 5e-2, 1e-8*1e4, 1e-4, 0, 1e-8*1e12] # Pauls's version (very large muscle activity)
 
      
   loss_weighted = {
@@ -176,14 +164,6 @@ def cal_loss(data, loss_weight=None, test=False):
   overall_loss = 0
   for key in loss_weighted:
     overall_loss += loss_weighted[key]
-
-  if test:
-    # angle_loss
-    loss_weighted['angle'] = np.mean(calculate_angles_between_vectors(data['vel'], data['tg'], data['xy']))
-
-    # lateral_loss
-    out = calculate_lateral_deviation(data['xy'], data['tg'])
-    loss_weighted['lateral'] = np.mean(out[0])
 
   return overall_loss, loss_weighted
 
@@ -213,10 +193,7 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',f
       obs, terminated, info = env.step(action=action)
 
 
-      if len(h.shape) == 3:
-        data['all_hidden'].append(h[0, :, None, :])
-      else:
-        data['all_hidden'].append(h[:, None, :])
+      data['all_hidden'].append(h[0, :, None, :])
       data['all_muscle'].append(info['states']['muscle'][:, 0, None, :])
       data['all_force'].append(info['states']['muscle'][:, -1, None, :])
       data['xy'].append(info["states"]["fingertip"][:, None, :])
@@ -272,22 +249,14 @@ if __name__ == "__main__":
       phase = sys.argv[3] # growing_up or anything else
       n_batch = int(sys.argv[4])
       directory_name = sys.argv[5]
-      #modular = int(sys.argv[6])
       train_single = int(sys.argv[6])
-      #continue_train = int(sys.argv[8]) if len(sys.argv) > 8 else 0
-
-      #loss_weight = np.array([[1, 1e-4, 1e-5, 3e-5, 2e-2, 2e2],
-      #                        [1, 1e-4, 4e-6, 3e-5, 2e-2, 2e2],
-      #                        [1, 1e-4, 5e-5, 3e-5, 2e-2, 2e2]])
-
-      #train(0,ff_coefficient,phase,continue_train=continue_train,n_batch=n_batch,directory_name=directory_name)
 
       if train_single:
-        train(0,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,modular=0)
+        train(0,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)
       else:
         iter_list = range(16)
         n_jobs = 16
         while len(iter_list) > 0:
           these_iters = iter_list[0:n_jobs]
           iter_list = iter_list[n_jobs:]
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name,modular=0) for iteration in these_iters)
+          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name) for iteration in these_iters)
