@@ -59,7 +59,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
   env, policy, optimizer, scheduler = load_stuff(cfg_file=cfg_file,weight_file=weight_file,phase=phase,
                                                  freeze_output_layer=freeze_output_layer,freeze_input_layer=freeze_input_layer)
-  batch_size = 32
+  batch_size = 512
 
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
