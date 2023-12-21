@@ -20,8 +20,6 @@ def create_directory(directory_name=None):
         # Create the directory if it doesn't exist
         os.makedirs(directory_path)
         print(f"Directory '{directory_path}' created successfully.")
-    #else:
-        #print(f"Directory '{directory_path}' already exists.")
 
     # Return the created directory's name (whether it was newly created or already existed)
     return directory_path
@@ -32,7 +30,7 @@ def window_average(x, w=10):
     return x[0:w*rows].reshape((rows,cols)).mean(axis=1)
 
 def load_env(task,cfg=None,dT=None):
-
+    # also get K and B
     if cfg is None:
 
         name = 'env'
@@ -46,7 +44,7 @@ def load_env(task,cfg=None,dT=None):
         # Define task and the effector
         effector = mn.effector.RigidTendonArm26(muscle=mn.muscle.RigidTendonHillMuscle())
 
-        max_ep_duration = 2
+        max_ep_duration = 1
     else:
         name = cfg['name']
         # effector
@@ -87,7 +85,7 @@ def load_policy(n_input,n_output,weight_file=None,phase='growing_up',freeze_outp
     import torch as th
     device = th.device("cpu")
     
-    num_hidden = 336
+    num_hidden = 128 #336
     from policy import Policy
     policy = Policy(n_input, num_hidden, n_output, device=device, 
                     freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer)
@@ -99,13 +97,14 @@ def load_policy(n_input,n_output,weight_file=None,phase='growing_up',freeze_outp
         optimizer = th.optim.Adam(policy.parameters(), lr=3e-3)
         scheduler = th.optim.lr_scheduler.ExponentialLR(optimizer,  gamma=0.9999)
     else:
-        optimizer = th.optim.SGD(policy.parameters(), lr=1e-3)
+        optimizer = th.optim.SGD(policy.parameters(), lr=5e-3)
         scheduler = None
         
     return policy, optimizer, scheduler
 
 
 def load_stuff(cfg_file,weight_file,phase='growing_up',freeze_output_layer=False, freeze_input_layer=False):
+    # also get K and B
     import json
     from task import CentreOutFF
 

@@ -168,13 +168,13 @@ def plot_force(data,label,figsize=(10,15),dt=0.01):
 
     color_list = ['m','c','g','b','r','y','k','orange']
 
-    x = np.linspace(0, np.shape(data[0]['all_endpoint'])[1]*dt, np.shape(data[0]['all_endpoint'])[1])
+    x = np.linspace(0, np.shape(data[0]['endpoint_load'])[1]*dt, np.shape(data[0]['endpoint_load'])[1])
 
     max_force = 0
     max_vel = 0
     for i in range(8):
         for j in range(len(data)):
-            ep = np.linalg.norm(data[j]['all_endpoint'][i,:,:],axis=1)
+            ep = np.linalg.norm(data[j]['endpoint_load'][i,:,:],axis=1)
             vel = np.linalg.norm(data[j]['vel'][i,:,:],axis=1)
             if np.max(ep)>max_force:
                 max_force = np.max(ep)

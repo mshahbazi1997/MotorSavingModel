@@ -1,15 +1,20 @@
 import os
 import sys 
-from utils import create_directory, load_env, load_policy, load_stuff
+from utils import create_directory, load_stuff
 from utils import calculate_angles_between_vectors, calculate_lateral_deviation
-from task import CentreOutFF
 import torch as th
 import numpy as np
 import json
-from joblib import Parallel, delayed
 from pathlib import Path
 from tqdm import tqdm
+from joblib import Parallel, delayed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
+
+#import dill
+#import multiprocessing
+#multiprocessing.set_start_method('fork')
+#th._dynamo.config.cache_size_limit = 16 * 1024 ** 3  # ~ 16 GB
 
 def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,directory_name=None,loss_weight=None):
   """
@@ -27,6 +32,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   # check if we have the file already related to this phase
   # if so, the continue training from there
   weight_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_weights'), None)
+  weight_file = None # Delete this later
   if weight_file is not None:
     cfg_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_cfg.json'))
 
@@ -59,7 +65,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
   env, policy, optimizer, scheduler = load_stuff(cfg_file=cfg_file,weight_file=weight_file,phase=phase,
                                                  freeze_output_layer=freeze_output_layer,freeze_input_layer=freeze_input_layer)
-  batch_size = 512
+  batch_size = 32
 
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
@@ -107,10 +113,10 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   print("Done...")
 
 
-def test(env,policy,ff_coefficient=0,is_channel=False,K=170,B=-1):
+def test(env,policy,ff_coefficient=0,is_channel=False):
 
   # Run episode
-  data = run_episode(env, policy, batch_size=8, catch_trial_perc=0, condition='test', ff_coefficient=ff_coefficient, is_channel=is_channel, K=K,B=B, detach=True, calc_endpoint_force=True)
+  data = run_episode(env, policy, batch_size=8, catch_trial_perc=0, condition='test', ff_coefficient=ff_coefficient, is_channel=is_channel, detach=True, calc_endpoint_force=True)
 
   # Calculate loss
   _, loss_test = cal_loss(data)
@@ -145,9 +151,14 @@ def cal_loss(data, loss_weight=None):
 
   if loss_weight is None:
      # position, jerk, muscle, muscle_derivative, hidden, hidden_derivative, hidden_jerk
+     #loss_weight = [1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 0] # Mahdiyar's OLD
+     #loss_weight = [1, 1e1, 1e-4, 1e-5, 3e-5, 2e-2, 0] # Mahdiyar's version growing_up
+     loss_weight = [1e1, 2e3, 1e-4, 1e-5, 3e-5, 2e-2, 0] # FF1 GOOD not straight trajectory
+     loss_weight = [1e2, 3e3, 1e-4, 1e-5, 3e-5, 2e-2, 0] # FF1 GOOD but large muscle activity
+     loss_weight = [1e1, 2e3, 1e-4, 1e-5, 3e-5, 2e-2, 0] # 
 
-     loss_weight = [1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 0] # Mahdiyar's version
-     loss_weight = [1e2, 1e-6*1e8, 1e-1, 0, 1e-2, 0, 2e-10*1e12] # Jon's version
+
+     #loss_weight = [1e2, 1e-6*1e8, 1e-1, 0, 1e-2, 0, 2e-10*1e12] # Jon's version
      #loss_weight = [1e3, 1e-7**1e12, 5e-2, 1e-8*1e4, 1e-4, 0, 1e-8*1e12] # Pauls's version (very large muscle activity)
 
      
@@ -168,10 +179,10 @@ def cal_loss(data, loss_weight=None):
   return overall_loss, loss_weighted
 
 
-def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,K=170,B=-1,detach=False,calc_endpoint_force=False):
+def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False):
   h = policy.init_hidden(batch_size=batch_size)
   obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, 
-                        is_channel=is_channel,K=K,B=B,calc_endpoint_force=calc_endpoint_force)
+                        is_channel=is_channel,calc_endpoint_force=calc_endpoint_force)
   terminated = False
 
   # Initialize a dictionary to store lists
@@ -254,9 +265,33 @@ if __name__ == "__main__":
       if train_single:
         train(0,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)
       else:
-        iter_list = range(16)
-        n_jobs = 16
-        while len(iter_list) > 0:
-          these_iters = iter_list[0:n_jobs]
-          iter_list = iter_list[n_jobs:]
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name) for iteration in these_iters)
+
+        # List of iterations
+        these_iters = [0, 1]
+
+        # Number of processes to use
+        num_processes = len(these_iters)
+
+        # Create a ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+            # Use as_completed to iterate over completed futures
+            futures = {executor.submit(train, iteration, ff_coefficient, phase, n_batch, directory_name): iteration for iteration in these_iters}
+            
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    # Process the result if needed
+                except Exception as e:
+                    # Handle exceptions if any
+                    print(f"Error in iteration {futures[future]}: {e}")
+
+
+
+
+
+        # iter_list = range(16)
+        # n_jobs = 2
+        # while len(iter_list) > 0:
+        #   these_iters = iter_list[0:n_jobs]
+        #   iter_list = iter_list[n_jobs:]
+        #   result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name) for iteration in these_iters)

@@ -12,6 +12,10 @@ class CentreOutFF(mn.environment.Environment):
     # pass everything as-is to the parent Environment class
     super().__init__(*args, **kwargs)
     self.__name__ = "CentreOutFF"
+    # check if we have K and B in kwargs
+    self.K = kwargs.get('K', 170)
+    self.B = kwargs.get('B', -1)
+
 
   def reset(self, *, 
             seed: int | None = None, 
@@ -20,8 +24,6 @@ class CentreOutFF(mn.environment.Environment):
             catch_trial_perc: float = 50,
             is_channel: bool = False,
             calc_endpoint_force: bool = False,
-            K: float = 1,
-            B: float = -1,
             go_cue_range: Union[list, tuple, np.ndarray] = (0.1, 0.3),
             options: dict[str, Any] | None = None) -> tuple[Any, dict[str, Any]]:
 
@@ -40,8 +42,6 @@ class CentreOutFF(mn.environment.Environment):
     self.ff_coefficient = ff_coefficient
     self.go_cue_range = go_cue_range # in seconds
     self.is_channel = is_channel
-    self.K = K
-    self.B = B
 
 
     
@@ -178,8 +178,7 @@ class CentreOutFF(mn.environment.Environment):
     obs_as_list = [
       self.obs_buffer["vision"][0],  # oldest element
       self.obs_buffer["proprioception"][0],   # oldest element
-      self.goal, # goal
-      self.init, # initial position
+      self.goal, # goal #self.init, # initial position
       self.go_cue, # sepcify go cue as an input to the network
       ]
     obs = th.cat(obs_as_list, dim=-1)
