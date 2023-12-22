@@ -232,7 +232,7 @@ if __name__ == "__main__":
     trainall = int(sys.argv[1])
 
     if trainall:
-      directory_name = sys.argv[2]
+      #directory_name = sys.argv[2]
 
 
       loss_weights = np.array([1e+3,   # position
@@ -259,47 +259,51 @@ if __name__ == "__main__":
         lw[idx][5] = mhhw[2]
 
       # these loss i want to try [9,10,11,16,17,18,19,20,21,23,26]
-      loss_weight = lw[18]
-      
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=20010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-        for future in as_completed(futures):
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
-      
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=2010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-        for future in as_completed(futures):
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
-      
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-        for future in as_completed(futures):
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
+        
+      for j in [9,16,10,11,17,19,20,21,23,26]:
+        loss_weight = lw[j]
+        directory_name = f"loss{str(j)}"
+        
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=20010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+          for future in as_completed(futures):
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
+        
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=2010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+          for future in as_completed(futures):
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
+        
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+          for future in as_completed(futures):
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
+        
 
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-        for future in as_completed(futures):
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=7010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+          for future in as_completed(futures):
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
 
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-        for future in as_completed(futures):
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+          for future in as_completed(futures):
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
         
 
           

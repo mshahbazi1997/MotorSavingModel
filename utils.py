@@ -13,7 +13,8 @@ def create_directory(directory_name=None):
     home_directory = os.path.expanduser("~")
 
     # Create the full directory path
-    directory_path = os.path.join(home_directory, "Documents", "Data","MotorNet", directory_name)
+    #directory_path = os.path.join(home_directory, "Documents", "Data","MotorNet", directory_name)
+    directory_path = os.path.join(home_directory, "Dropbox", "Data","MotorNet", directory_name)
 
     # Check if the directory exists
     if not os.path.exists(directory_path):
