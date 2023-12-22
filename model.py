@@ -9,11 +9,11 @@ from pathlib import Path
 from tqdm import tqdm
 from joblib import Parallel, delayed
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from itertools import product
 
 
-#import dill
-#import multiprocessing
-#multiprocessing.set_start_method('fork')
+
+
 #th._dynamo.config.cache_size_limit = 16 * 1024 ** 3  # ~ 16 GB
 
 def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,directory_name=None,loss_weight=None):
@@ -83,7 +83,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
       scheduler.step()
 
     # test the network
-    data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient)
+    data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight)
     
     # Save losses
     losses['overall'].append(overall_loss.item())
@@ -113,13 +113,13 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   print("Done...")
 
 
-def test(env,policy,ff_coefficient=0,is_channel=False):
+def test(env,policy,ff_coefficient=0,is_channel=False,loss_weight=None):
 
   # Run episode
   data = run_episode(env, policy, batch_size=8, catch_trial_perc=0, condition='test', ff_coefficient=ff_coefficient, is_channel=is_channel, detach=True, calc_endpoint_force=True)
 
   # Calculate loss
-  _, loss_test = cal_loss(data)
+  _, loss_test = cal_loss(data,loss_weight=loss_weight)
 
   # anglular deviation
   ang_dev = np.mean(calculate_angles_between_vectors(data['vel'], data['tg'], data['xy']))
@@ -234,26 +234,74 @@ if __name__ == "__main__":
     if trainall:
       directory_name = sys.argv[2]
 
-      iter_list = range(16)
-      n_jobs = 16
-      while len(iter_list) > 0:
-          these_iters = iter_list[0:n_jobs]
-          iter_list = iter_list[n_jobs:]
-          # pretraining the network using ADAM
-          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'growing_up',n_batch=50000,directory_name=directory_name) 
-          #                                           for iteration in these_iters)
-          # NF1
-          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF1',n_batch=30000,directory_name=directory_name) 
-          #                                           for iteration in these_iters)
-          # FF1
-          #result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF1',n_batch=60000,directory_name=directory_name) 
-          #                                           for iteration in these_iters)
-          # NF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,0,'NF2',n_batch=60000,directory_name=directory_name) 
-                                                     for iteration in these_iters)
-          # FF2
-          result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,8,'FF2',n_batch=60000,directory_name=directory_name) 
-                                                     for iteration in these_iters)
+
+      loss_weights = np.array([1e+3,   # position
+                                 1e+5,   # jerk
+                                 1e-1,   # muscle
+                                 1e-5,   # muscle_derivative
+                                 3e-5,   # hidden 
+                                 2e-2,   # hidden_derivative
+                                 0])     # hidden_jerk
+      md_w = np.logspace(start=-6,stop=-1,num=3)
+      h_w = np.logspace(start=-5,stop=-2,num=3)
+      hd_w = np.logspace(start=-3,stop=-1,num=3)
+
+      mhh_w = np.array(list(product(md_w,h_w,hd_w)))
+
+      iter_list = range(20)
+      num_processes = len(iter_list)
+
+      lw = [loss_weights.copy() for _ in range(len(mhh_w))]
+
+      for idx,mhhw in enumerate(mhh_w):
+        lw[idx][3] = mhhw[0]
+        lw[idx][4] = mhhw[1]
+        lw[idx][5] = mhhw[2]
+
+      # these loss i want to try [9,10,11,16,17,18,19,20,21,23,26]
+      loss_weight = lw[18]
+      
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=20010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
+      
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=2010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
+      
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
+
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
+
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
+        
+
           
     else: ## training networks for each phase separately
       ff_coefficient = int(sys.argv[2])
@@ -265,33 +313,33 @@ if __name__ == "__main__":
       if train_single:
         train(0,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)
       else:
+        loss_weights = np.array([1e+3,   # position
+                                 1e+5,   # jerk
+                                 1e-1,   # muscle
+                                 1e-5,   # muscle_derivative
+                                 3e-5,   # hidden 
+                                 2e-2,   # hidden_derivative
+                                 0])     # hidden_jerk
+        md_w = np.logspace(start=-6,stop=-1,num=3)
+        h_w = np.logspace(start=-5,stop=-2,num=3)
+        hd_w = np.logspace(start=-3,stop=-1,num=3)
 
-        # List of iterations
-        these_iters = [0, 1]
+        mhh_w = np.array(list(product(md_w,h_w,hd_w)))
 
-        # Number of processes to use
-        num_processes = len(these_iters)
+        iter_list = range(len(mhh_w))
+        num_processes = len(iter_list)
 
-        # Create a ProcessPoolExecutor
+        lw = [loss_weights.copy() for _ in range(len(mhh_w))]
+
+        for idx,mhhw in enumerate(mhh_w):
+          lw[idx][3] = mhhw[0]
+          lw[idx][4] = mhhw[1]
+          lw[idx][5] = mhhw[2]
+
         with ProcessPoolExecutor(max_workers=num_processes) as executor:
-            # Use as_completed to iterate over completed futures
-            futures = {executor.submit(train, iteration, ff_coefficient, phase, n_batch, directory_name): iteration for iteration in these_iters}
-            
-            for future in as_completed(futures):
-                try:
-                    result = future.result()
-                    # Process the result if needed
-                except Exception as e:
-                    # Handle exceptions if any
-                    print(f"Error in iteration {futures[future]}: {e}")
-
-
-
-
-
-        # iter_list = range(16)
-        # n_jobs = 2
-        # while len(iter_list) > 0:
-        #   these_iters = iter_list[0:n_jobs]
-        #   iter_list = iter_list[n_jobs:]
-        #   result = Parallel(n_jobs=len(these_iters))(delayed(train)(iteration,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name) for iteration in these_iters)
+          futures = {executor.submit(train, iteration, ff_coefficient, phase, n_batch, directory_name, lw[iteration]): iteration for iteration in iter_list}
+          for future in as_completed(futures):
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
