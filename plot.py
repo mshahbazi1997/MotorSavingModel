@@ -76,6 +76,7 @@ def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,fig
     loss = {phase: [] for phase in phases}
     for i,phase in enumerate(phases):
         for m in range(num_model):
+            print(m)
             if m in ignore:
                 continue
             model_name = "model{:02d}".format(m)
