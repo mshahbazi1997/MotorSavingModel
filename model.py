@@ -1,6 +1,6 @@
 import os
 import sys 
-from utils import create_directory, load_stuff
+from utils import load_stuff
 from utils import calculate_angles_between_vectors, calculate_lateral_deviation
 import torch as th
 import numpy as np
@@ -12,7 +12,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from itertools import product
 
 
-
+base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
 #th._dynamo.config.cache_size_limit = 16 * 1024 ** 3  # ~ 16 GB
 
@@ -24,7 +24,8 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   interval = 200
   catch_trial_perc = 50
   all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2'])
-  output_folder = create_directory(directory_name=directory_name)
+  #output_folder = create_directory(directory_name=directory_name)
+  output_folder = os.path.join(base_dir,directory_name)
   model_name = "model{:02d}".format(model_num)
   print("{}...".format(model_name))
 

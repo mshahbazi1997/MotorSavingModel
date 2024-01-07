@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 import json
 from utils import *
+from get_utils import get_dir
 
 
 def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
@@ -64,7 +65,7 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
 
-def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
+def plot_learning(folder_name,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
 
     color_list = ['k','g','k','r']
     if show_saving:
@@ -76,11 +77,11 @@ def plot_learning(data_dir,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,fig
     loss = {phase: [] for phase in phases}
     for i,phase in enumerate(phases):
         for m in range(num_model):
-            print(m)
+            #print(m)
             if m in ignore:
                 continue
             model_name = "model{:02d}".format(m)
-            log = list(Path(data_dir).glob(f'{model_name}_phase={phase}_*_log.json'))[0]
+            _,_,log=get_dir(folder_name, model_name, phase)
             log = json.load(open(log,'r'))
             loss[phase].append(log[loss_type])
         
@@ -131,38 +132,32 @@ def plot_activation(all_hidden, all_muscles,figsize=(10,15),dt=0.01):
     return fg, ax
 
 
-def plot_traj(X_latent_list, plot_scatter=1, marker=['x','o'],alpha=[1,0.5], which_times=[24], dim=3, figsize=(9, 6)):
+def plot_traj(ax,X_latent_list, plot_scatter=1, marker=['x', 'o', '*', 's', 'D', 'v', '>', '<', 'p', '^'],alpha=[1,0.5,0.4,0.2], which_times=[24], dim=3, which_latent=[0,1,2]):
     angle_set = np.deg2rad(np.arange(0, 360, 45))  # 8 directions
     color_list = [plt.cm.brg(cond / (2 * np.pi)) for cond in angle_set]
 
     if dim == 2:
-        fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111)
-
         for i,X_latent in enumerate(X_latent_list):
             if plot_scatter:
                 for tr in range(8):
-                    ax.scatter(X_latent[tr, which_times, 0], X_latent[tr, which_times, 1], color=color_list[tr],marker=marker[i])
+                    ax.scatter(X_latent[tr, which_times, which_latent[0]], X_latent[tr, which_times, which_latent[1]], color=color_list[tr],marker=marker[i])
             else:
                 for tr in range(8):
-                    ax.plot(X_latent[tr, which_times, 0].T, X_latent[tr, which_times, 1].T, color=color_list[tr],alpha=alpha[i])
+                    ax.plot(X_latent[tr, which_times, which_latent[0]].T, X_latent[tr, which_times, which_latent[1]].T, color=color_list[tr],alpha=alpha[i])
 
     elif dim == 3:
-        fig = plt.figure(figsize=figsize)
-        ax = fig.add_subplot(111, projection='3d')
-
         for i,X_latent in enumerate(X_latent_list):
             if plot_scatter:
                 for tr in range(8):
-                    ax.scatter3D(X_latent[tr, which_times, 0], X_latent[tr, which_times, 1], X_latent[tr, which_times, 2], color=color_list[tr],marker=marker[i])
+                    ax.scatter3D(X_latent[tr, which_times, which_latent[0]], X_latent[tr, which_times, which_latent[1]], X_latent[tr, which_times, which_latent[2]], color=color_list[tr],marker=marker[i])
             else:
                 for tr in range(8):
-                    ax.plot3D(X_latent[tr, which_times, 0].T, X_latent[tr, which_times, 1].T, X_latent[tr, which_times, 2].T, color=color_list[tr],alpha=alpha[i])
+                    ax.plot3D(X_latent[tr, which_times, which_latent[0]].T, X_latent[tr, which_times, which_latent[1]].T, X_latent[tr, which_times, which_latent[2]].T, color=color_list[tr],alpha=alpha[i])
 
     else:
         print("Dimension must be 2 or 3!")
 
-    return fig, ax
+    #return fig, ax
 
 def plot_force(data,label,figsize=(10,15),dt=0.01):
     fg, ax = plt.subplots(nrows=8,ncols=1,figsize=figsize)
