@@ -4,6 +4,7 @@ import motornet as mn
 import numpy as np
 from scipy.optimize import minimize
 from pathlib import Path
+from itertools import product
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
@@ -247,5 +248,28 @@ def optimize_channel(cfg_file,weight_file):
 
     return theta.x
 
+def sweep_loss():
+    loss_weights = np.array([1e+3,   # position
+                                 1e+5,   # jerk
+                                 1e-1,   # muscle
+                                 1e-5,   # muscle_derivative
+                                 3e-5,   # hidden 
+                                 2e-2,   # hidden_derivative
+                                 0])     # hidden_jerk
+    md_w = np.logspace(start=-6,stop=-1,num=3)
+    h_w = np.logspace(start=-5,stop=-2,num=3)
+    hd_w = np.logspace(start=-3,stop=-1,num=3)
 
+    mhh_w = np.array(list(product(md_w,h_w,hd_w)))
+
+    iter_list = range(20)
+    num_processes = len(iter_list)
+
+    lw = [loss_weights.copy() for _ in range(len(mhh_w))]
+
+    for idx,mhhw in enumerate(mhh_w):
+        lw[idx][3] = mhhw[0]
+        lw[idx][4] = mhhw[1]
+        lw[idx][5] = mhhw[2]
+    return lw
 

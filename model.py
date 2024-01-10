@@ -7,9 +7,9 @@ import numpy as np
 import json
 from pathlib import Path
 from tqdm import tqdm
-from joblib import Parallel, delayed
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from itertools import product
+import pickle
+
 
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
@@ -22,6 +22,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   """
 
   interval = 200
+  save_interval = 20
   catch_trial_perc = 50
   all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2'])
   #output_folder = create_directory(directory_name=directory_name)
@@ -40,6 +41,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
     # open loss file
     loss_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_log.json'))
     losses = json.load(open(loss_file,'r'))
+    saved_batch = [] # TODO: get this from the file name
   else:
     weight_file = None
     cfg_file = None
@@ -60,6 +62,8 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
       'angle': [],
       'lateral': []
       }
+    
+    saved_batch = []
 
   # load environment and policy
   freeze_output_layer = freeze_input_layer = (phase != 'growing_up')
@@ -67,15 +71,24 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   env, policy, optimizer, scheduler = load_stuff(cfg_file=cfg_file,weight_file=weight_file,phase=phase,
                                                  freeze_output_layer=freeze_output_layer,freeze_input_layer=freeze_input_layer)
   batch_size = 32
-
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
+
+    # test the network right at the beginning
+    data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight)
+
+    # save data for this model and batch
+    if (batch % save_interval == 0):
+      file_name = "{}_{}_{}_data.pkl".format(model_name,phase,batch)
+      with open(os.path.join(output_folder, file_name), 'wb') as f:
+        pickle.dump(data, f)
+        saved_batch.append(batch)
 
     # train the network
     data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
     overall_loss, _ = cal_loss(data, loss_weight=loss_weight)
     
-    
-    optimizer.zero_grad() 
+    # update the network    
+    optimizer.zero_grad()
     overall_loss.backward()
     th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)  # important!
 
@@ -83,9 +96,6 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
     if scheduler is not None:
       scheduler.step()
 
-    # test the network
-    data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight)
-    
     # Save losses
     losses['overall'].append(overall_loss.item())
     for key in loss_test:
@@ -109,9 +119,14 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
       with open(log_file,'w') as file, open(cfg_file,'w') as cfg_file:
         json.dump(losses,file)
         json.dump(env.get_save_config(),cfg_file)
-    
+
+  # save saved_batch
+  with open(os.path.join(output_folder, f"{model_name}_{phase}_saved_batch.pkl"), 'wb') as f:
+    pickle.dump(saved_batch, f)
 
   print("Done...")
+
+  
 
 
 def test(env,policy,ff_coefficient=0,is_channel=False,loss_weight=None):
@@ -159,8 +174,19 @@ def cal_loss(data, loss_weight=None):
      loss_weight = [1e1, 2e3, 1e-4, 1e-5, 3e-5, 2e-2, 0] # 
 
 
-     #loss_weight = [1e2, 1e-6*1e8, 1e-1, 0, 1e-2, 0, 2e-10*1e12] # Jon's version
-     #loss_weight = [1e3, 1e-7**1e12, 5e-2, 1e-8*1e4, 1e-4, 0, 1e-8*1e12] # Pauls's version (very large muscle activity)
+
+     # currently in use
+     loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-5,1e-3,0]) # 9
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-5,1e-2,0]) # 10
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-5,1e-1,0]) # 11
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-2,1e-2,0]) # 16
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-2,1e-1,0]) # 17
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,1e-5,1e-3,0]) # 18
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,1e-5,1e-2,0]) # 19
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,1e-5,1e-1,0]) # 20
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,3.16227766e-04,1e-3,0]) # 21
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,3.16227766e-04,1e-1,0]) # 23
+    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,1e-2,1e-1,0]) # 26
 
      
   loss_weighted = {
@@ -233,79 +259,53 @@ if __name__ == "__main__":
     trainall = int(sys.argv[1])
 
     if trainall:
-      #directory_name = sys.argv[2]
-
-
-      loss_weights = np.array([1e+3,   # position
-                                 1e+5,   # jerk
-                                 1e-1,   # muscle
-                                 1e-5,   # muscle_derivative
-                                 3e-5,   # hidden 
-                                 2e-2,   # hidden_derivative
-                                 0])     # hidden_jerk
-      md_w = np.logspace(start=-6,stop=-1,num=3)
-      h_w = np.logspace(start=-5,stop=-2,num=3)
-      hd_w = np.logspace(start=-3,stop=-1,num=3)
-
-      mhh_w = np.array(list(product(md_w,h_w,hd_w)))
-
-      iter_list = range(20)
+      directory_name = sys.argv[2]
+      
+      iter_list = range(1,20) # 20
       num_processes = len(iter_list)
+      
+      
+      # with ProcessPoolExecutor(max_workers=num_processes) as executor:
+      #   futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=20010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+      #   for future in as_completed(futures):
+      #     try:
+      #       result = future.result()
+      #     except Exception as e:
+      #       print(f"Error in iteration {futures[future]}: {e}")
+      
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=2010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
+      
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=10010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
+      
 
-      lw = [loss_weights.copy() for _ in range(len(mhh_w))]
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=7010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
 
-      for idx,mhhw in enumerate(mhh_w):
-        lw[idx][3] = mhhw[0]
-        lw[idx][4] = mhhw[1]
-        lw[idx][5] = mhhw[2]
-
-      # these loss i want to try [9,10,11,16,17,18,19,20,21,23,26]
-        
-      for j in [9,16,10,11,17,19,20,21,23,26]:
-        loss_weight = lw[j]
-        directory_name = f"loss{str(j)}"
-        
-        with ProcessPoolExecutor(max_workers=num_processes) as executor:
-          futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=20010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-          for future in as_completed(futures):
-            try:
-              result = future.result()
-            except Exception as e:
-              print(f"Error in iteration {futures[future]}: {e}")
-        
-        with ProcessPoolExecutor(max_workers=num_processes) as executor:
-          futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=2010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-          for future in as_completed(futures):
-            try:
-              result = future.result()
-            except Exception as e:
-              print(f"Error in iteration {futures[future]}: {e}")
-        
-        with ProcessPoolExecutor(max_workers=num_processes) as executor:
-          futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-          for future in as_completed(futures):
-            try:
-              result = future.result()
-            except Exception as e:
-              print(f"Error in iteration {futures[future]}: {e}")
-        
-
-        with ProcessPoolExecutor(max_workers=num_processes) as executor:
-          futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=7010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-          for future in as_completed(futures):
-            try:
-              result = future.result()
-            except Exception as e:
-              print(f"Error in iteration {futures[future]}: {e}")
-
-        with ProcessPoolExecutor(max_workers=num_processes) as executor:
-          futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=10010, directory_name=directory_name, loss_weight=loss_weight): iteration for iteration in iter_list}
-          for future in as_completed(futures):
-            try:
-              result = future.result()
-            except Exception as e:
-              print(f"Error in iteration {futures[future]}: {e}")
-        
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=10010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
+      
 
           
     else: ## training networks for each phase separately
@@ -318,31 +318,11 @@ if __name__ == "__main__":
       if train_single:
         train(0,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)
       else:
-        loss_weights = np.array([1e+3,   # position
-                                 1e+5,   # jerk
-                                 1e-1,   # muscle
-                                 1e-5,   # muscle_derivative
-                                 3e-5,   # hidden 
-                                 2e-2,   # hidden_derivative
-                                 0])     # hidden_jerk
-        md_w = np.logspace(start=-6,stop=-1,num=3)
-        h_w = np.logspace(start=-5,stop=-2,num=3)
-        hd_w = np.logspace(start=-3,stop=-1,num=3)
-
-        mhh_w = np.array(list(product(md_w,h_w,hd_w)))
-
-        iter_list = range(len(mhh_w))
+        iter_list = range(20)
         num_processes = len(iter_list)
-
-        lw = [loss_weights.copy() for _ in range(len(mhh_w))]
-
-        for idx,mhhw in enumerate(mhh_w):
-          lw[idx][3] = mhhw[0]
-          lw[idx][4] = mhhw[1]
-          lw[idx][5] = mhhw[2]
-
+        
         with ProcessPoolExecutor(max_workers=num_processes) as executor:
-          futures = {executor.submit(train, iteration, ff_coefficient, phase, n_batch, directory_name, lw[iteration]): iteration for iteration in iter_list}
+          futures = {executor.submit(train, iteration, ff_coefficient, phase, n_batch, directory_name): iteration for iteration in iter_list}
           for future in as_completed(futures):
             try:
               result = future.result()
