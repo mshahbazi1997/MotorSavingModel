@@ -6,30 +6,39 @@ import numpy as np
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
-def get_dir(folder_name,model_name,phase):
+def get_dir(folder_name,model_name,phase,ff_coef):
+    """
+    Get the directory of the model with the given parameters
+        params:
+            ff_coef: the coeffient by which we train the model, can be found in the phase dictionary
+    """
 
     data_dir = os.path.join(base_dir,folder_name)
-
-    weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_*_weights'))[0]
-    cfg_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_*_cfg.json'))[0]
-    loss_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_*_log.json'))[0]
-
+    weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_weights'))[0]
+    cfg_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_cfg.json'))[0]
+    loss_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_log.json'))[0]
+        
     return weight_file, cfg_file, loss_file
 
-def get_data(folder_name,model_name,phase=['NF1'],ff_coef=[0],is_channel=False):
-    import warnings
-    warnings.filterwarnings('ignore')
-    data=[]
-    for i,p in enumerate(phase):
-        weight_file, cfg_file, _ = get_dir(folder_name,model_name,p)
-        
-        env, policy, _, _ = load_stuff(cfg_file,weight_file,phase=phase)
-        data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coef[i],is_channel=is_channel)
+def get_data(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False):
 
-        data.append(data0)
+    data=[]
+    count = -1
+    for i,p in enumerate(phase.keys()):
+        for f in phase[p]:
+            count += 1
+            weight_file, cfg_file, _ = get_dir(folder_name,model_name,p,f)
+            
+            env, policy, _, _ = load_stuff(cfg_file,weight_file,phase=p)
+            if ff_coef is None:
+                data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=f,is_channel=is_channel)
+            else:
+                data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coef[count],is_channel=is_channel)
+
+            data.append(data0)
     return data
 
-def get_hidden(folder_name,model_name,phase=['NF1'],ff_coef=[0],is_channel=False,demean=False):
+def get_hidden(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False,demean=False):
     data = get_data(folder_name,model_name,phase,ff_coef,is_channel)
     Data= []
     for i in range(len(data)):
@@ -38,10 +47,20 @@ def get_hidden(folder_name,model_name,phase=['NF1'],ff_coef=[0],is_channel=False
         dims = X.shape
 
         if demean:
-            X = X-np.mean(X,axis=0,keepdims=True) # TODO
-            X = X.reshape(-1,dims[-1]) # [(cond X time), neuron]
-            X = X-np.mean(X,axis=0)
-            X = np.reshape(X,newshape=dims)
+            if i==0:
+                mean_dat = np.mean(X,axis=0,keepdims=True)
+            X = X-mean_dat
+            #X = X-np.mean(X,axis=0,keepdims=True) # TODO
+            #X = X.reshape(-1,dims[-1]) # [(cond X time), neuron]
+            #X = X-np.mean(X,axis=0)
+            #X = np.reshape(X,newshape=dims)
+        Data.append(X)
+    return Data
+def get_force(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False):
+    data = get_data(folder_name,model_name,phase,ff_coef,is_channel)
+    Data= []
+    for i in range(len(data)):
+        X = np.array(data[i]['endpoint_force'])
         Data.append(X)
     return Data
 def get_weights():

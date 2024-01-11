@@ -65,7 +65,9 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
 
-def plot_learning(folder_name,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
+def plot_learning(folder_name,num_model=16,phases={'NF1':0,'FF1':8,'NF2':0,'FF2':8},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
+
+    all_phase = list(phases.keys())
 
     color_list = ['k','g','k','r']
     if show_saving:
@@ -74,14 +76,14 @@ def plot_learning(folder_name,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,
         fig,ax = plt.subplots(1,1,figsize=figsize)
         ax=[ax]
 
-    loss = {phase: [] for phase in phases}
-    for i,phase in enumerate(phases):
+    loss = {phase: [] for phase in phases.keys()}
+    for i,phase in enumerate(phases.keys()):
         for m in range(num_model):
             #print(m)
             if m in ignore:
                 continue
             model_name = "model{:02d}".format(m)
-            _,_,log=get_dir(folder_name, model_name, phase)
+            _,_,log=get_dir(folder_name, model_name, phase, phases[phase])
             log = json.load(open(log,'r'))
             loss[phase].append(log[loss_type])
         
@@ -94,7 +96,7 @@ def plot_learning(folder_name,num_model=16,phases=['NF1','FF1','NF2','FF2'],w=1,
 
         loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1)
         if i > 0:
-            loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1) + np.max(loss[phases[i-1]+'_x'])
+            loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1) + np.max(loss[all_phase[i-1]+'_x'])
             #np.shape(loss[phases[i-1]])[1]
         
         ax[0].plot(loss[phase+'_x'],loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
