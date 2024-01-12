@@ -55,7 +55,7 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
 
 
     if vel is not None:
-        
+
         # plot the line that connect initial and peak velocity positions
         vel_norm = np.linalg.norm(vel, axis=-1)
         idx = np.argmax(vel_norm, axis=1)
@@ -83,10 +83,9 @@ def plot_learning(folder_name,num_model=16,phases={'NF1':0,'FF1':8,'NF2':0,'FF2'
             if m in ignore:
                 continue
             model_name = "model{:02d}".format(m)
-            _,_,log=get_dir(folder_name, model_name, phase, phases[phase])
+            _,_,log=get_dir(folder_name, model_name, phase, phases[phase][0])
             log = json.load(open(log,'r'))
             loss[phase].append(log[loss_type])
-        
 
         # Calculate window averages for all models
         loss[phase] = [window_average(np.array(l), w) for l in loss[phase]]

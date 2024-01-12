@@ -49,6 +49,7 @@ def get_hidden(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=Fa
         if demean:
             if i==0:
                 mean_dat = np.mean(X,axis=0,keepdims=True)
+
             X = X-mean_dat
             #X = X-np.mean(X,axis=0,keepdims=True) # TODO
             #X = X.reshape(-1,dims[-1]) # [(cond X time), neuron]
