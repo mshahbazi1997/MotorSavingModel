@@ -129,10 +129,14 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   
 
 
-def test(env,policy,ff_coefficient=0,is_channel=False,loss_weight=None):
+def test(env,policy,ff_coefficient=0,is_channel=False,loss_weight=None,add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
+                t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15]):
 
   # Run episode
-  data = run_episode(env, policy, batch_size=8, catch_trial_perc=0, condition='test', ff_coefficient=ff_coefficient, is_channel=is_channel, detach=True, calc_endpoint_force=True)
+  data = run_episode(env, policy, batch_size=8, catch_trial_perc=0, condition='test', 
+                     ff_coefficient=ff_coefficient, is_channel=is_channel, detach=True, calc_endpoint_force=True,
+                     add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise, var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
+                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise)
 
   # Calculate loss
   _, loss_test = cal_loss(data,loss_weight=loss_weight)
@@ -206,7 +210,10 @@ def cal_loss(data, loss_weight=None):
   return overall_loss, loss_weighted
 
 
-def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False):
+def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
+                ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False,
+                add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
+                t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15]):
   h = policy.init_hidden(batch_size=batch_size)
   obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, 
                         is_channel=is_channel,calc_endpoint_force=calc_endpoint_force)
@@ -230,6 +237,15 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',f
       action, h = policy(obs, h)
       obs, terminated, info = env.step(action=action)
 
+      # add noise to the observation
+      # vision noise: first two columns
+      if add_vis_noise:
+          if env.elapsed>=t_vis_noise[0] and env.elapsed<t_vis_noise[1]:
+              obs[:,:2] += th.normal(0,var_vis_noise,size=(batch_size,2))
+      # properioceptive noise: next 12 columns
+      if add_prop_noise:
+          if env.elapsed>=t_prop_noise[0] and env.elapsed<t_prop_noise[1]:
+              obs[:,2:14] += th.normal(0,var_prop_noise,size=(batch_size,12))
 
       data['all_hidden'].append(h[0, :, None, :])
       data['all_muscle'].append(info['states']['muscle'][:, 0, None, :])

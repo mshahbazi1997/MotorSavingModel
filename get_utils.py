@@ -20,9 +20,13 @@ def get_dir(folder_name,model_name,phase,ff_coef):
         
     return weight_file, cfg_file, loss_file
 
-def get_data(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False):
+def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=False,
+             add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
+             t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],return_loss=False):
+    # here i want to add a noise option
 
     data=[]
+    Loss=[]
     count = -1
     for i,p in enumerate(phase.keys()):
         for f in phase[p]:
@@ -31,12 +35,22 @@ def get_data(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=Fals
             
             env, policy, _, _ = load_stuff(cfg_file,weight_file,phase=p)
             if ff_coef is None:
-                data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=f,is_channel=is_channel)
+                data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=f,is_channel=is_channel,
+                                                     add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise,
+                                                     var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
+                                                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise)
             else:
-                data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coef[count],is_channel=is_channel)
+                data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coef[count],is_channel=is_channel,
+                                                     add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise,
+                                                     var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
+                                                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise)
 
             data.append(data0)
-    return data
+            Loss.append(loss)
+    if return_loss:
+        return data, Loss
+    else:
+        return data
 
 def get_hidden(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False,demean=False):
     data = get_data(folder_name,model_name,phase,ff_coef,is_channel)
@@ -64,5 +78,7 @@ def get_force(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=Fal
         X = np.array(data[i]['endpoint_force'])
         Data.append(X)
     return Data
+
+
 def get_weights():
     1==1
