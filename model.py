@@ -32,9 +32,9 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
 
   # check if we have the file already related to this phase
-  # if so, the continue training from there FFCoef=8
+  # if so, the continue training from there
   weight_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights'), None)
-  weight_file = None # Delete this later
+  #weight_file = None # Delete this later
   if weight_file is not None:
     cfg_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_cfg.json'))
 
@@ -77,11 +77,11 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
     data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight)
 
     # save data for this model and batch
-    if (batch % save_interval == 0):
-      file_name = "{}_{}_{}_data.pkl".format(model_name,phase,batch)
-      with open(os.path.join(output_folder, file_name), 'wb') as f:
-        pickle.dump(data, f)
-        saved_batch.append(batch)
+    # if (batch % save_interval == 0):
+    #   file_name = "{}_{}_{}_data.pkl".format(model_name,phase,batch)
+    #   with open(os.path.join(output_folder, file_name), 'wb') as f:
+    #     pickle.dump(data, f)
+    #     saved_batch.append(batch)
 
     # train the network
     data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
@@ -121,8 +121,8 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
         json.dump(env.get_save_config(),cfg_file)
 
   # save saved_batch
-  with open(os.path.join(output_folder, f"{model_name}_{phase}_saved_batch.pkl"), 'wb') as f:
-    pickle.dump(saved_batch, f)
+  # with open(os.path.join(output_folder, f"{model_name}_{phase}_saved_batch.pkl"), 'wb') as f:
+  #   pickle.dump(saved_batch, f)
 
   print("Done...")
 

@@ -16,7 +16,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 def sim_prop(i):
-    folder_name = 'Sim_all_inv'
+    folder_name = 'Sim_all_inv2'
     model_name = 'model01'
 
     phase = {'NF1':[0],'NF2':[0]}
@@ -39,7 +39,7 @@ def sim_prop(i):
     T.to_csv(f'simulations/sim{i}_prop_noise.csv',index=False)
 
 def sim_vis(i):
-    folder_name = 'Sim_all_inv'
+    folder_name = 'Sim_all_inv2'
     model_name = 'model01'
 
     phase = {'NF1':[0],'NF2':[0]}
