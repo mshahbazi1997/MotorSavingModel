@@ -83,6 +83,13 @@ def get_force(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=Fal
         Data.append(X)
     return Data
 
+def get_vel(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False):
+    data = get_data(folder_name,model_name,phase,ff_coef,is_channel)
+    Data= []
+    for i in range(len(data)):
+        X = np.array(data[i]['vel'])
+        Data.append(X)
+    return Data
 
 def get_Gweights(folder_name,model_name,phase={'NF1':[0]}):
     weights = ['gru.weight_ih_l0','gru.bias_ih_l0','gru.weight_hh_l0','gru.bias_hh_l0','fc.weight','fc.bias','h0']
