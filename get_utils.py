@@ -26,7 +26,8 @@ def get_dir(folder_name,model_name,phase,ff_coef):
 
 def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=False,
              add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
-             t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],return_loss=False):
+             t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],return_loss=False,
+             disturb_hidden=False, t_disturb_hidden=0.15, d_hidden=None):
     # here i want to add a noise option
 
     data=[]
@@ -42,12 +43,16 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
                 data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=f,is_channel=is_channel,
                                                      add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise,
                                                      var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
-                                                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise)
+                                                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise,
+                                                     disturb_hidden=disturb_hidden, t_disturb_hidden=t_disturb_hidden,
+                                                     d_hidden=d_hidden)
             else:
                 data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coef[count],is_channel=is_channel,
                                                      add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise,
                                                      var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
-                                                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise)
+                                                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise,
+                                                     disturb_hidden=disturb_hidden, t_disturb_hidden=t_disturb_hidden,
+                                                     d_hidden=d_hidden)
 
             data.append(data0)
             Loss.append(loss)

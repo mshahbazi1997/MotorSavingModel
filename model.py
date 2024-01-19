@@ -16,7 +16,7 @@ base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
 #th._dynamo.config.cache_size_limit = 16 * 1024 ** 3  # ~ 16 GB
 
-def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,directory_name=None,loss_weight=None):
+def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,directory_name=None,loss_weight=None,disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None):
   """
   args:
   """
@@ -130,13 +130,15 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
 
 def test(env,policy,ff_coefficient=0,is_channel=False,loss_weight=None,add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
-                t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15]):
+                t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
+                disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None):
 
   # Run episode
   data = run_episode(env, policy, batch_size=8, catch_trial_perc=0, condition='test', 
                      ff_coefficient=ff_coefficient, is_channel=is_channel, detach=True, calc_endpoint_force=True,
                      add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise, var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
-                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise)
+                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise,
+                     disturb_hidden=disturb_hidden, t_disturb_hidden=t_disturb_hidden, d_hidden=d_hidden)
 
   # Calculate loss
   _, loss_test = cal_loss(data,loss_weight=loss_weight)
@@ -213,7 +215,8 @@ def cal_loss(data, loss_weight=None):
 def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
                 ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False,
                 add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
-                t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15]):
+                t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
+                disturb_hidden=False, t_disturb_hidden=0.15, d_hidden=None):
   h = policy.init_hidden(batch_size=batch_size)
   obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, 
                         is_channel=is_channel,calc_endpoint_force=calc_endpoint_force)
@@ -221,51 +224,57 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
 
   # Initialize a dictionary to store lists
   data = {
-      'xy': [],
-      'tg': [],
-      'vel': [],
-      'all_action': [],
-      'all_hidden': [],
-      'all_muscle': [],
-      'all_force': [],
-      'endpoint_load': [],
-      'endpoint_force': []
+    'xy': [],
+    'tg': [],
+    'vel': [],
+    'all_action': [],
+    'all_hidden': [],
+    'all_muscle': [],
+    'all_force': [],
+    'endpoint_load': [],
+    'endpoint_force': []
   }
 
   while not terminated:
+    action, h = policy(obs, h)
+    obs, terminated, info = env.step(action=action)
 
-      action, h = policy(obs, h)
-      obs, terminated, info = env.step(action=action)
+    # add noise to the observation
+    # vision noise: first two columns
+    if add_vis_noise:
+        if env.elapsed>=t_vis_noise[0] and env.elapsed<t_vis_noise[1]:
+            obs[:,:2] += th.normal(0,var_vis_noise,size=(batch_size,2))
+    # properioceptive noise: next 12 columns
+    if add_prop_noise:
+        if env.elapsed>=t_prop_noise[0] and env.elapsed<t_prop_noise[1]:
+            obs[:,2:14] += th.normal(0,var_prop_noise,size=(batch_size,12))
 
-      # add noise to the observation
-      # vision noise: first two columns
-      if add_vis_noise:
-          if env.elapsed>=t_vis_noise[0] and env.elapsed<t_vis_noise[1]:
-              obs[:,:2] += th.normal(0,var_vis_noise,size=(batch_size,2))
-      # properioceptive noise: next 12 columns
-      if add_prop_noise:
-          if env.elapsed>=t_prop_noise[0] and env.elapsed<t_prop_noise[1]:
-              obs[:,2:14] += th.normal(0,var_prop_noise,size=(batch_size,12))
 
-      data['all_hidden'].append(h[0, :, None, :])
-      data['all_muscle'].append(info['states']['muscle'][:, 0, None, :])
-      data['all_force'].append(info['states']['muscle'][:, -1, None, :])
-      data['xy'].append(info["states"]["fingertip"][:, None, :])
-      data['tg'].append(info["goal"][:, None, :])
-      data['vel'].append(info["states"]["cartesian"][:, None, 2:])  # velocity
-      data['all_action'].append(action[:, None, :])
-      data['endpoint_load'].append(info['endpoint_load'][:, None, :])
-      data['endpoint_force'].append(info['endpoint_force'][:, None, :])
+    # add disturn hidden activity
+    if disturb_hidden:
+      if env.elapsed==t_disturb_hidden:
+        dh = d_hidden.repeat(1,batch_size,1)
+        h += dh
+
+    data['all_hidden'].append(h[0, :, None, :])
+    data['all_muscle'].append(info['states']['muscle'][:, 0, None, :])
+    data['all_force'].append(info['states']['muscle'][:, -1, None, :])
+    data['xy'].append(info["states"]["fingertip"][:, None, :])
+    data['tg'].append(info["goal"][:, None, :])
+    data['vel'].append(info["states"]["cartesian"][:, None, 2:])  # velocity
+    data['all_action'].append(action[:, None, :])
+    data['endpoint_load'].append(info['endpoint_load'][:, None, :])
+    data['endpoint_force'].append(info['endpoint_force'][:, None, :])
       
 
   # Concatenate the lists
   for key in data:
-      data[key] = th.cat(data[key], axis=1)
+    data[key] = th.cat(data[key], axis=1)
 
   if detach:
-      # Detach tensors if needed
-      for key in data:
-          data[key] = th.detach(data[key])
+    # Detach tensors if needed
+    for key in data:
+        data[key] = th.detach(data[key])
 
   return data
 
