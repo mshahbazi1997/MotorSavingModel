@@ -21,7 +21,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   args:
   """
 
-  interval = 200
+  interval = 100
   save_interval = 20
   catch_trial_perc = 50
   all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2'])
@@ -33,8 +33,8 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
   # check if we have the file already related to this phase
   # if so, the continue training from there
-  weight_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights'), None)
-  #weight_file = None # Delete this later
+  #weight_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights'), None)
+  weight_file = None # Delete this later
   if weight_file is not None:
     cfg_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_cfg.json'))
 
@@ -83,8 +83,10 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
     #     pickle.dump(data, f)
     #     saved_batch.append(batch)
 
-    # train the network
-    data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
+    # # train the network
+    # data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
+    # train the network on 8 directions only
+    data = run_episode(env,policy,8,catch_trial_perc,'test',ff_coefficient=ff_coefficient,detach=False,go_cue_random=True)
     overall_loss, _ = cal_loss(data, loss_weight=loss_weight)
     
     # update the network    
@@ -213,13 +215,13 @@ def cal_loss(data, loss_weight=None):
 
 
 def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
-                ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False,
+                ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False, go_cue_random=False,
                 add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
                 t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
                 disturb_hidden=False, t_disturb_hidden=0.15, d_hidden=None):
   h = policy.init_hidden(batch_size=batch_size)
   obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, 
-                        is_channel=is_channel,calc_endpoint_force=calc_endpoint_force)
+                        is_channel=is_channel,calc_endpoint_force=calc_endpoint_force, go_cue_random=go_cue_random)
   terminated = False
 
   # Initialize a dictionary to store lists

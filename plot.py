@@ -112,7 +112,7 @@ def plot_learning(folder_name,num_model=16,phases={'NF1':0,'FF1':8,'NF2':0,'FF2'
     ax[0].set_ylabel(loss_type)
     #ax[1].set_ylabel(loss_type)
 
-    ax[0].axhline(y=np.mean(loss['NF1_mean'][:-10]), color='k', linestyle='--', linewidth=1)
+    ax[0].axhline(y=np.mean(loss['NF1_mean'][-10:]), color='k', linestyle='--', linewidth=1)
 
     return fig, ax
 
