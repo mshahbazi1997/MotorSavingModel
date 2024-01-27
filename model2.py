@@ -18,10 +18,9 @@ base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 #th._dynamo.config.cache_size_limit = 16 * 1024 ** 3  # ~ 16 GB
 
 def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=None,loss_weight=None):
-  """This is used for training after NF2
+  """
   args:
   """
-  
 
   interval = 100
   catch_trial_perc = 50
@@ -29,7 +28,6 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
   output_folder = os.path.join(base_dir,directory_name)
   model_name = "model{:02d}".format(model_num)
   print("{}...".format(model_name))
-
 
 
   # find the perturbation direction
@@ -74,9 +72,8 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
 
   disturb_hidden=True 
   t_disturb_hidden=0.15
-  d_hidden=th.from_numpy(us_orth_norm.T*-1)
-
-
+  #d_hidden=th.from_numpy(us_orth_norm.T*4.5)
+  d_hidden = th.from_numpy(us_orth_norm.T)
 
   weight_file = None
   cfg_file = None
@@ -109,14 +106,15 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
 
     # test the network right at the beginning
     data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight,
-                                             disturb_hidden=disturb_hidden,t_disturb_hidden=t_disturb_hidden,d_hidden=d_hidden)
+                                             disturb_hidden=False,t_disturb_hidden=t_disturb_hidden,d_hidden=d_hidden)
     
     # calc the projection on the d_hidden
     #np.mean(np.array(data['all_hidden'][:,15,:])@(np.array(-d_hidden).T))
 
+
     # train the network on 8 directions only
     data = run_episode(env,policy,8,catch_trial_perc,'test',ff_coefficient=ff_coefficient,detach=False,go_cue_random=True,
-                       disturb_hidden=disturb_hidden,t_disturb_hidden=t_disturb_hidden,d_hidden=d_hidden)
+                       disturb_hidden=False,t_disturb_hidden=t_disturb_hidden,d_hidden=d_hidden)
     overall_loss, _ = cal_loss(data, loss_weight=loss_weight)
     
     # update the network    
@@ -182,7 +180,7 @@ def test(env,policy,ff_coefficient=0,is_channel=False,loss_weight=None,add_vis_n
   return data, loss_test, ang_dev, lat_dev
 
 
-def cal_loss(data, loss_weight=None):
+def cal_loss(data, loss_weight=None,d_hidden=None):
 
   loss = {
     'position': None,
@@ -201,6 +199,13 @@ def cal_loss(data, loss_weight=None):
   loss['hidden'] = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
   loss['hidden_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=1, dim=1)), dim=-1))
   loss['hidden_jerk'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=3, dim=1)), dim=-1))
+
+  overall_loss = 0
+  # projection loss:
+  if d_hidden is not None:
+    proj=th.mean(th.matmul(data['all_hidden'][:,15,:],d_hidden.T))
+    proj_weighted = 1e-3*proj
+    overall_loss += proj_weighted
   
 
   if loss_weight is None:
@@ -237,7 +242,7 @@ def cal_loss(data, loss_weight=None):
     'hidden_jerk': loss_weight[6]*loss['hidden_jerk']
   }
 
-  overall_loss = 0
+  
   for key in loss_weighted:
     overall_loss += loss_weighted[key]
 
@@ -318,11 +323,9 @@ if __name__ == "__main__":
 
     if trainall:
       directory_name = sys.argv[2]
-      #
       
       iter_list = range(1) # 20
       num_processes = len(iter_list)
-      
       
       # with ProcessPoolExecutor(max_workers=num_processes) as executor:
       #   futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=20010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
@@ -375,7 +378,7 @@ if __name__ == "__main__":
       phase = 'NF2'
 
       #n_batch = int(sys.argv[4])
-      n_batch = 1300
+      n_batch = 2001
 
       #directory_name = sys.argv[5]
       directory_name = 'Sim_simple2'
