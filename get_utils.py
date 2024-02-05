@@ -10,7 +10,7 @@ from scipy.linalg import pinv
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
-def get_dir(folder_name,model_name,phase,ff_coef):
+def get_dir(folder_name,model_name,phase,ff_coef,batch=None):
     """
     Get the directory of the model with the given parameters
         params:
@@ -18,16 +18,19 @@ def get_dir(folder_name,model_name,phase,ff_coef):
     """
 
     data_dir = os.path.join(base_dir,folder_name)
-    weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_weights'))[0]
     cfg_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_cfg.json'))[0]
     loss_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_log.json'))[0]
-        
+    if batch is None:
+        weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_weights'))[0]
+    else:
+        weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coef}_weights'))[0]
     return weight_file, cfg_file, loss_file
 
 def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=False,
              add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
              t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],return_loss=False,
-             disturb_hidden=False, t_disturb_hidden=0.15, d_hidden=None):
+             disturb_hidden=False, t_disturb_hidden=0.15, d_hidden=None,batch=None):
+    
     # here i want to add a noise option
 
     data=[]
@@ -36,7 +39,10 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
     for i,p in enumerate(phase.keys()):
         for f in phase[p]:
             count += 1
-            weight_file, cfg_file, _ = get_dir(folder_name,model_name,p,f)
+            if batch is None:
+                weight_file, cfg_file, _ = get_dir(folder_name,model_name,p,f)
+            else:
+                weight_file, cfg_file, _ = get_dir(folder_name,model_name,p,f,batch=batch[count])
             
             env, policy, _, _ = load_stuff(cfg_file,weight_file,phase=p)
             if ff_coef is None:
@@ -65,8 +71,8 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
     else:
         return data
 
-def get_hidden(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False,demean=False):
-    data = get_data(folder_name,model_name,phase,ff_coef,is_channel)
+def get_hidden(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False,demean=False,batch=None):
+    data = get_data(folder_name,model_name,phase,ff_coef,is_channel,batch=batch)
     Data= []
     for i in range(len(data)):
         X = np.array(data[i]['all_hidden'])
@@ -84,8 +90,8 @@ def get_hidden(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=Fa
             #X = np.reshape(X,newshape=dims)
         Data.append(X)
     return Data
-def get_force(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False):
-    data = get_data(folder_name,model_name,phase,ff_coef,is_channel)
+def get_force(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False,batch=None):
+    data = get_data(folder_name,model_name,phase,ff_coef,is_channel,batch=batch)
     Data= []
     for i in range(len(data)):
         X = np.array(data[i]['endpoint_force'])

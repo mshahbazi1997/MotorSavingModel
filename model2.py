@@ -35,8 +35,8 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
   force = get_force(output_folder,model_name,{'NF1':[0],'FF1':[8]},[0,8])
 
   
-  N_idx = 15
-  F_idx = 24 # index of force
+  N_idx = 16
+  F_idx = 25 # index of force
   for i in range(len(data)):
     data[i] = data[i][:,N_idx,:]
     force[i] = force[i][:,F_idx,:]
@@ -71,7 +71,7 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
 
 
   disturb_hidden=True 
-  t_disturb_hidden=0.15
+  t_disturb_hidden=N_idx/100
   #d_hidden=th.from_numpy(us_orth_norm.T*4.5)
   d_hidden = th.from_numpy(us_orth_norm.T)
 
@@ -95,7 +95,7 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
     'lateral': []
     }
   results = {}
-  alphas = [0]
+  alphas = [-1,0,1]
   for alpha in alphas:
     results[str(alpha)] = deepcopy(losses)
 
@@ -108,7 +108,7 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
 
     for alpha in alphas:
       # Test the network
-      pert = th.from_numpy(0.5*alpha*us_orth_norm.T)
+      pert = th.from_numpy(0.6*alpha*us_orth_norm.T)
       data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight,
                                                disturb_hidden=True,t_disturb_hidden=t_disturb_hidden,d_hidden=pert)
       
@@ -138,7 +138,8 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
 
       # save the result at every 1000 batches
       # save_stuff(output_folder, model_name, phase, ff_coefficient, policy, losses, env)
-      weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coefficient}_weights")
+      #weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coefficient}_weights")
+      weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
       log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_log.json")
       #log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coefficient}_log.json")
       cfg_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_cfg.json")
@@ -152,8 +153,8 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
   print("Done...")
 
 def test(env,policy,ff_coefficient=0,is_channel=False,loss_weight=None,add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
-                t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
-                disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None):
+         t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
+         disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None):
 
   # Run episode
   data = run_episode(env, policy, batch_size=8, catch_trial_perc=0, condition='test', 
@@ -346,13 +347,13 @@ if __name__ == "__main__":
       ff_coefficient = 8
 
       #phase = sys.argv[3] # growing_up or anything else
-      phase = 'NF2'
+      phase = 'FF2'
 
       #n_batch = int(sys.argv[4])
-      n_batch = 3001
+      n_batch = 2000
 
       #directory_name = sys.argv[5]
-      directory_name = 'Sim_simple3'
+      directory_name = 'Sim_simple2'
 
       #train_single = int(sys.argv[6])
       train_single = 0
