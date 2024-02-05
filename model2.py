@@ -94,8 +94,10 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
     'angle': [],
     'lateral': []
     }
-  
-  proj = []
+  results = {}
+  alphas = [0]
+  for alpha in alphas:
+    results[str(alpha)] = deepcopy(losses)
 
   # load environment and policy
   freeze_output_layer = freeze_input_layer = (phase != 'growing_up')
@@ -104,13 +106,17 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
                                                  freeze_output_layer=freeze_output_layer,freeze_input_layer=freeze_input_layer)
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
-    # test the network right at the beginning
-    data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight,
-                                             disturb_hidden=False,t_disturb_hidden=t_disturb_hidden,d_hidden=d_hidden)
-    
-    # calc the projection on the d_hidden
-    #np.mean(np.array(data['all_hidden'][:,15,:])@(np.array(-d_hidden).T))
+    for alpha in alphas:
+      # Test the network
+      pert = th.from_numpy(0.5*alpha*us_orth_norm.T)
+      data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight,
+                                               disturb_hidden=True,t_disturb_hidden=t_disturb_hidden,d_hidden=pert)
+      
+      results[str(alpha)]['angle'].append(ang_dev.item())
+      results[str(alpha)]['lateral'].append(lat_dev.item())
 
+      for key in loss_test:
+        results[str(alpha)][key].append(loss_test[key].item())
 
     # train the network on 8 directions only
     data = run_episode(env,policy,8,catch_trial_perc,'test',ff_coefficient=ff_coefficient,detach=False,go_cue_random=True,
@@ -120,19 +126,11 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
     # update the network    
     optimizer.zero_grad()
     overall_loss.backward()
-    th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)  # important!
+    th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)
 
     optimizer.step()
     if scheduler is not None:
       scheduler.step()
-
-    # Save losses
-    losses['overall'].append(overall_loss.item())
-    for key in loss_test:
-      losses[key].append(loss_test[key].item())
-    
-    losses['angle'].append(ang_dev.item())
-    losses['lateral'].append(lat_dev.item())
 
     # print progress
     if (batch % interval == 0) and (batch != 0):
@@ -140,24 +138,18 @@ def train(model_num=1,ff_coefficient=0,phase='NF2',n_batch=10010,directory_name=
 
       # save the result at every 1000 batches
       # save_stuff(output_folder, model_name, phase, ff_coefficient, policy, losses, env)
-      weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
+      weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coefficient}_weights")
       log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_log.json")
+      #log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coefficient}_log.json")
       cfg_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_cfg.json")
 
       th.save(policy.state_dict(), weight_file)
 
       with open(log_file,'w') as file, open(cfg_file,'w') as cfg_file:
-        json.dump(losses,file)
+        json.dump(results,file)
         json.dump(env.get_save_config(),cfg_file)
 
-  # save saved_batch
-  # with open(os.path.join(output_folder, f"{model_name}_{phase}_saved_batch.pkl"), 'wb') as f:
-  #   pickle.dump(saved_batch, f)
-
   print("Done...")
-
-  
-
 
 def test(env,policy,ff_coefficient=0,is_channel=False,loss_weight=None,add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
                 t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
@@ -204,34 +196,13 @@ def cal_loss(data, loss_weight=None,d_hidden=None):
   # projection loss:
   if d_hidden is not None:
     proj=th.mean(th.matmul(data['all_hidden'][:,15,:],d_hidden.T))
-    proj_weighted = 1e-3*proj
+    proj_weighted = 0*proj
     overall_loss += proj_weighted
   
 
   if loss_weight is None:
-     # position, jerk, muscle, muscle_derivative, hidden, hidden_derivative, hidden_jerk
-     #loss_weight = [1, 2e2, 1e-4, 1e-5, 3e-5, 2e-2, 0] # Mahdiyar's OLD
-     #loss_weight = [1, 1e1, 1e-4, 1e-5, 3e-5, 2e-2, 0] # Mahdiyar's version growing_up
-     loss_weight = [1e1, 2e3, 1e-4, 1e-5, 3e-5, 2e-2, 0] # FF1 GOOD not straight trajectory
-     loss_weight = [1e2, 3e3, 1e-4, 1e-5, 3e-5, 2e-2, 0] # FF1 GOOD but large muscle activity
-     loss_weight = [1e1, 2e3, 1e-4, 1e-5, 3e-5, 2e-2, 0] # 
-
-
-
-     # currently in use
      loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-5,1e-3,0]) # 9
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-5,1e-2,0]) # 10
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-5,1e-1,0]) # 11
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-2,1e-2,0]) # 16
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 3.16227766e-04,1e-2,1e-1,0]) # 17
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,1e-5,1e-3,0]) # 18
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,1e-5,1e-2,0]) # 19
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,1e-5,1e-1,0]) # 20
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,3.16227766e-04,1e-3,0]) # 21
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,3.16227766e-04,1e-1,0]) # 23
-    #  loss_weight = np.array([1e+3,1e+5,1e-1, 1e-1,1e-2,1e-1,0]) # 26
 
-     
   loss_weighted = {
     'position': loss_weight[0]*loss['position'],
     'jerk': loss_weight[1]*loss['jerk'],
@@ -372,16 +343,16 @@ if __name__ == "__main__":
           
     else: ## training networks for each phase separately
       #ff_coefficient = int(sys.argv[2])
-      ff_coefficient = 0
+      ff_coefficient = 8
 
       #phase = sys.argv[3] # growing_up or anything else
       phase = 'NF2'
 
       #n_batch = int(sys.argv[4])
-      n_batch = 2001
+      n_batch = 3001
 
       #directory_name = sys.argv[5]
-      directory_name = 'Sim_simple2'
+      directory_name = 'Sim_simple3'
 
       #train_single = int(sys.argv[6])
       train_single = 0

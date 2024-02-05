@@ -24,7 +24,7 @@ def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
     return fig, ax
 
 
-def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
+def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis'):
     target_x = target_xy[:, -1, 0]
     target_y = target_xy[:, -1, 1]
 
@@ -34,7 +34,7 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None):
     ax.set_xlim([-0.3, 0.])
 
     plotor = mn.plotor.plot_pos_over_time
-    plotor(axis=ax, cart_results=xy)
+    plotor(axis=ax, cart_results=xy,cmap=cmap)
 
     angle_set = np.deg2rad(np.arange(0, 360, 45))  # 8 directions
     #angle_set = np.deg2rad(np.array([0,45,60,75,90,105,120,135,180,225,315]))
@@ -115,6 +115,75 @@ def plot_learning(folder_name,num_model=16,phases={'NF1':0,'FF1':8,'NF2':0,'FF2'
     ax[0].axhline(y=np.mean(loss['NF1_mean'][-10:]), color='k', linestyle='--', linewidth=1)
 
     return fig, ax
+def plot_learning2(folder_name,num_model=20,phases={'NF1':0,'FF1':8,'NF2':0,'FF2':8},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
+
+    all_phase = list(phases.keys())
+
+    color_list = ['k','g','k','r','m','c']
+    if show_saving:
+        fig,ax = plt.subplots(2,1,figsize=figsize)
+    else: 
+        fig,ax = plt.subplots(1,1,figsize=figsize)
+        ax=[ax]
+
+    #loss = {'NF1':[],'FF1':[],'NF2':[],'FF2_-1':[],'FF2_0':[],'FF2_1':[]}
+    loss = {'NF1':[],'FF1':[],'NF2':[],'FF2_0':[],'FF2_-1':[],'FF2_1':[]}
+
+    for i,phase in enumerate(['NF1','FF1','NF2','FF2_0','FF2_-1','FF2_1']):
+        for m in range(num_model):
+            #print(m)
+            if m in ignore:
+                continue
+            model_name = "model{:02d}".format(m)
+            
+            if phase == 'FF2_-1' or phase == 'FF2_0' or phase == 'FF2_1':
+                phase_temp = 'FF2'
+                _,_,log=get_dir(folder_name, model_name, phase_temp, phases[phase_temp][0])
+                log = json.load(open(log,'r'))
+                if phase == 'FF2_-1':
+                    log = log['-1']
+                elif phase == 'FF2_0':
+                    log = log['0']
+                elif phase == 'FF2_1':
+                    log = log['1']
+                loss[phase].append(log[loss_type])
+            else:
+                _,_,log=get_dir(folder_name, model_name, phase, phases[phase][0])
+                log = json.load(open(log,'r'))
+                loss[phase].append(log[loss_type])
+
+        # Calculate window averages for all models
+        loss[phase] = [window_average(np.array(l), w) for l in loss[phase]]
+        # Calculate the mean and standard deviation across models
+        loss[phase+'_mean'] = np.mean(loss[phase], axis=0)
+        loss[phase+'_std'] = np.std(loss[phase], axis=0)
+
+        loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1)
+        if i > 0:
+            if i>=3:
+                loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1) + np.max(loss[all_phase[2]+'_x'])
+            else:
+                loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1) + np.max(loss[all_phase[i-1]+'_x'])
+            #np.shape(loss[phases[i-1]])[1]
+        
+        ax[0].plot(loss[phase+'_x'],loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
+        ax[0].fill_between(loss[phase+'_x'], loss[phase+'_mean'] - loss[phase+'_std'], loss[phase+'_mean'] + loss[phase+'_std'], color=color_list[i], alpha=0.5)
+
+        if show_saving:
+            if phase=='FF1' or phase=='FF2_0' or phase=='FF2_-1' or phase=='FF2_1':
+                ax[1].plot(loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
+
+    #ax[1].legend()
+    ax[0].legend()
+    #ax[0].set_yscale('log')
+
+    ax[0].set_ylabel(loss_type)
+    #ax[1].set_ylabel(loss_type)
+
+    ax[0].axhline(y=np.mean(loss['NF1_mean'][-10:]), color='k', linestyle='--', linewidth=1)
+
+    return fig, ax
+
 
 
 def plot_activation(all_hidden, all_muscles,figsize=(10,15),dt=0.01):
