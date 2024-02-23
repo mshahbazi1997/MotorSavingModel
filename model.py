@@ -131,12 +131,15 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   
 
 
-def test(env,policy,ff_coefficient=0,is_channel=False,loss_weight=None,add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
-                t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
-                disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None):
+def test(env,policy,ff_coefficient=0,is_channel=False,
+         batch_size=8, catch_trial_perc=0, condition='test', go_cue_random=None,
+         loss_weight=None,add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
+         t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
+         disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None):
 
   # Run episode
-  data = run_episode(env, policy, batch_size=8, catch_trial_perc=0, condition='test', 
+  data = run_episode(env, policy, batch_size=batch_size, catch_trial_perc=catch_trial_perc, condition=condition,
+                     go_cue_random=go_cue_random,
                      ff_coefficient=ff_coefficient, is_channel=is_channel, detach=True, calc_endpoint_force=True,
                      add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise, var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
                      t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise,
@@ -215,7 +218,7 @@ def cal_loss(data, loss_weight=None):
 
 
 def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
-                ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False, go_cue_random=False,
+                ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False, go_cue_random=None,
                 add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
                 t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
                 disturb_hidden=False, t_disturb_hidden=0.15, d_hidden=None):
