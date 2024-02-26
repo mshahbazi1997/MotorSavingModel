@@ -135,7 +135,7 @@ def test(env,policy,ff_coefficient=0,is_channel=False,
          batch_size=8, catch_trial_perc=0, condition='test', go_cue_random=None,
          loss_weight=None,add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
          t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
-         disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None):
+         disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None, seed = None):
 
   # Run episode
   data = run_episode(env, policy, batch_size=batch_size, catch_trial_perc=catch_trial_perc, condition=condition,
@@ -143,7 +143,7 @@ def test(env,policy,ff_coefficient=0,is_channel=False,
                      ff_coefficient=ff_coefficient, is_channel=is_channel, detach=True, calc_endpoint_force=True,
                      add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise, var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
                      t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise,
-                     disturb_hidden=disturb_hidden, t_disturb_hidden=t_disturb_hidden, d_hidden=d_hidden)
+                     disturb_hidden=disturb_hidden, t_disturb_hidden=t_disturb_hidden, d_hidden=d_hidden, seed = seed)
 
   # Calculate loss
   _, loss_test = cal_loss(data,loss_weight=loss_weight)
@@ -221,10 +221,10 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
                 ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False, go_cue_random=None,
                 add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
                 t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
-                disturb_hidden=False, t_disturb_hidden=0.15, d_hidden=None):
+                disturb_hidden=False, t_disturb_hidden=0.15, d_hidden=None, seed = None):
   h = policy.init_hidden(batch_size=batch_size)
   obs, info = env.reset(condition=condition, catch_trial_perc=catch_trial_perc, ff_coefficient=ff_coefficient, options={'batch_size': batch_size}, 
-                        is_channel=is_channel,calc_endpoint_force=calc_endpoint_force, go_cue_random=go_cue_random)
+                        is_channel=is_channel,calc_endpoint_force=calc_endpoint_force, go_cue_random=go_cue_random, seed = seed)
   terminated = False
 
   # Initialize a dictionary to store lists

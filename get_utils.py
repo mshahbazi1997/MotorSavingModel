@@ -30,7 +30,7 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
              batch_size=8,catch_trial_perc=0,condition='test',go_cue_random=None,
              add_vis_noise=False,add_prop_noise=False,var_vis_noise=0.1,var_prop_noise=0.1,
              t_vis_noise=[0.1,0.15],t_prop_noise=[0.1,0.15],return_loss=False,
-             disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None,batch=None):
+             disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None,batch=None, seed = None):
     
     data=[]
     Loss=[]
@@ -49,7 +49,7 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
                                                  var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
                                                  t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise,
                                                  disturb_hidden=disturb_hidden, t_disturb_hidden=t_disturb_hidden,
-                                                 d_hidden=d_hidden)
+                                                 d_hidden=d_hidden, seed = seed)
             
             loss['lateral'] = lat_dev
             loss['angle'] = ang_dev
