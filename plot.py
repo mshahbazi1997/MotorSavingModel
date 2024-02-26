@@ -65,7 +65,7 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis'):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
 
-def plot_learning(folder_name,num_model=16,phases={'NF1':0,'FF1':8,'NF2':0,'FF2':8},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
+def plot_learning(folder_name,num_model=16,phases={'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
 
     all_phase = list(phases.keys())
 
@@ -115,7 +115,7 @@ def plot_learning(folder_name,num_model=16,phases={'NF1':0,'FF1':8,'NF2':0,'FF2'
     ax[0].axhline(y=np.mean(loss['NF1_mean'][-10:]), color='k', linestyle='--', linewidth=1)
 
     return fig, ax
-def plot_learning2(folder_name,num_model=20,phases={'NF1':0,'FF1':8,'NF2':0,'FF2':8},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
+def plot_learning_perturbation(folder_name,num_model=20,phases={'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
 
     all_phase = list(phases.keys())
 
