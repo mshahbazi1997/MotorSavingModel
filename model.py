@@ -17,7 +17,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   """
   args:
   """
-  num_hidden = 128
+  num_hidden = 64
   interval = 100
   catch_trial_perc = 50
   all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2'])
@@ -244,22 +244,24 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
 
 if __name__ == "__main__":
     
-    trainall = int(sys.argv[1])
+    #trainall = int(sys.argv[1])
+    trainall = 1
 
     if trainall:
-      directory_name = sys.argv[2]
+      #directory_name = sys.argv[2]
+      directory_name = 'Sim_simple_64'
       
       iter_list = range(1) # 20
       num_processes = len(iter_list)
       
       
-      # with ProcessPoolExecutor(max_workers=num_processes) as executor:
-      #   futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=20010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-      #   for future in as_completed(futures):
-      #     try:
-      #       result = future.result()
-      #     except Exception as e:
-      #       print(f"Error in iteration {futures[future]}: {e}")
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=20010, directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
       
       # with ProcessPoolExecutor(max_workers=num_processes) as executor:
       #   futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=2010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
@@ -286,13 +288,13 @@ if __name__ == "__main__":
       #     except Exception as e:
       #       print(f"Error in iteration {futures[future]}: {e}")
 
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=-8, phase='FF2', n_batch=10010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-        for future in as_completed(futures):
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
+      # with ProcessPoolExecutor(max_workers=num_processes) as executor:
+      #   futures = {executor.submit(train, model_num=iteration, ff_coefficient=-8, phase='FF2', n_batch=10010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+      #   for future in as_completed(futures):
+      #     try:
+      #       result = future.result()
+      #     except Exception as e:
+      #       print(f"Error in iteration {futures[future]}: {e}")
       
 
           
