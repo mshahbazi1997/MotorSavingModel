@@ -8,14 +8,12 @@ import json
 from pathlib import Path
 from tqdm import tqdm
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import pickle
-
 
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
 
-def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,directory_name=None,loss_weight=None):
+def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,directory_name=None,loss_weight=None,train_random=False):
   """
   args:
   """
@@ -70,16 +68,17 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
 
     # train the network
-    # # with random reach targets
-    # data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
-    # train the network on 8 directions only
-    data = run_episode(env,policy,8,catch_trial_perc,'test',ff_coefficient=ff_coefficient,detach=False,go_cue_random=True)
+    if train_random:
+      data = run_episode(env,policy,batch_size,catch_trial_perc,'train',ff_coefficient=ff_coefficient,detach=False)
+    else:
+      data = run_episode(env,policy,8,catch_trial_perc,'test',ff_coefficient=ff_coefficient,detach=False,go_cue_random=True)
+
     overall_loss, _ = cal_loss(data, loss_weight=loss_weight)
     
     # update the network    
     optimizer.zero_grad()
     overall_loss.backward()
-    th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)  # important!
+    th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)
 
     optimizer.step()
     if scheduler is not None:
