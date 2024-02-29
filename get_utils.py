@@ -27,10 +27,8 @@ def get_dir(folder_name,model_name,phase,ff_coef,batch=None):
     return weight_file, cfg_file, loss_file
 
 def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=False,
-             batch_size=8,catch_trial_perc=0,condition='test',go_cue_random=None,
-             add_vis_noise=False,add_prop_noise=False,var_vis_noise=0.1,var_prop_noise=0.1,
-             t_vis_noise=[0.1,0.15],t_prop_noise=[0.1,0.15],return_loss=False,
-             disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None,batch=None, seed = None):
+             batch_size=8,catch_trial_perc=0,condition='test',go_cue_random=None,return_loss=False,
+             disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None,batch=None,seed=None,num_hidden=128):
     
     data=[]
     Loss=[]
@@ -40,16 +38,13 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
             count += 1
 
             weight_file, cfg_file, _ = get_dir(folder_name,model_name,p,f,batch=batch[count] if batch else None)
-            env, policy, _, _ = load_stuff(cfg_file,weight_file,phase=p)
+            env, policy, _, _ = load_stuff(cfg_file,weight_file,phase=p,num_hidden=num_hidden)
             ff_coefficient = f if ff_coef is None else ff_coef[count]
 
             data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,is_channel=is_channel,
                                                  batch_size=batch_size,catch_trial_perc=catch_trial_perc,condition=condition,go_cue_random=go_cue_random,
-                                                 add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise,
-                                                 var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
-                                                 t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise,
                                                  disturb_hidden=disturb_hidden, t_disturb_hidden=t_disturb_hidden,
-                                                 d_hidden=d_hidden, seed = seed)
+                                                 d_hidden=d_hidden, seed=seed)
             
             loss['lateral'] = lat_dev
             loss['angle'] = ang_dev
@@ -59,42 +54,8 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
     return (data, Loss) if return_loss else data
 
 
-def get_hidden(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False,demean=False,batch=None):
-    data = get_data(folder_name,model_name,phase,ff_coef,is_channel,batch=batch)
-    Data= []
-    for i in range(len(data)):
-        X = np.array(data[i]['all_hidden'])
 
-        dims = X.shape
-
-        if demean:
-            if i==0:
-                mean_dat = np.mean(X,axis=0,keepdims=True)
-
-            X = X-mean_dat
-            #X = X-np.mean(X,axis=0,keepdims=True) # TODO
-            #X = X.reshape(-1,dims[-1]) # [(cond X time), neuron]
-            #X = X-np.mean(X,axis=0)
-            #X = np.reshape(X,newshape=dims)
-        Data.append(X)
-    return Data
-def get_force(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False,batch=None):
-    data = get_data(folder_name,model_name,phase,ff_coef,is_channel,batch=batch)
-    Data= []
-    for i in range(len(data)):
-        X = np.array(data[i]['endpoint_force'])
-        Data.append(X)
-    return Data
-
-def get_vel(folder_name,model_name,phase={'NF1':0},ff_coef=None,is_channel=False):
-    data = get_data(folder_name,model_name,phase,ff_coef,is_channel)
-    Data= []
-    for i in range(len(data)):
-        X = np.array(data[i]['vel'])
-        Data.append(X)
-    return Data
-
-def get_Gweights(folder_name,model_name,phase={'NF1':[0]}):
+def get_weights_G(folder_name,model_name,phase={'NF1':[0]}):
     weights = ['gru.weight_ih_l0','gru.bias_ih_l0','gru.weight_hh_l0','gru.bias_hh_l0','fc.weight','fc.bias','h0']
     weights_dict = {weight:[] for weight in weights}
 

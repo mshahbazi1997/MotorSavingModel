@@ -21,6 +21,9 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   interval = 100
   catch_trial_perc = 50
   all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2'])
+  # create output folder if not exist
+  if not os.path.exists(os.path.join(base_dir,directory_name)):
+    os.makedirs(os.path.join(base_dir,directory_name))
   output_folder = os.path.join(base_dir,directory_name)
   model_name = "model{:02d}".format(model_num)
   print("{}...".format(model_name))
@@ -111,16 +114,12 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
 def test(env,policy,ff_coefficient=0,is_channel=False,
          batch_size=8, catch_trial_perc=0, condition='test', go_cue_random=None,
-         loss_weight=None,add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
-         t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
-         disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None, seed=None):
+         loss_weight=None,disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None, seed=None):
 
   # Run episode
   data = run_episode(env, policy, batch_size=batch_size, catch_trial_perc=catch_trial_perc, condition=condition,
                      go_cue_random=go_cue_random,
                      ff_coefficient=ff_coefficient, is_channel=is_channel, detach=True, calc_endpoint_force=True,
-                     add_vis_noise=add_vis_noise, add_prop_noise=add_prop_noise, var_vis_noise=var_vis_noise, var_prop_noise=var_prop_noise,
-                     t_vis_noise=t_vis_noise, t_prop_noise=t_prop_noise,
                      disturb_hidden=disturb_hidden, t_disturb_hidden=t_disturb_hidden, d_hidden=d_hidden, seed=seed)
 
   # Calculate loss
@@ -131,7 +130,6 @@ def test(env,policy,ff_coefficient=0,is_channel=False,
   lat_dev = np.mean(calculate_lateral_deviation(data['xy'], data['tg'])[0])
 
   return data, loss_test, ang_dev, lat_dev
-
 
 def cal_loss(data, loss_weight=None):
 
@@ -177,8 +175,6 @@ def cal_loss(data, loss_weight=None):
 
 def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
                 ff_coefficient=None, is_channel=False,detach=False,calc_endpoint_force=False, go_cue_random=None,
-                add_vis_noise=False, add_prop_noise=False, var_vis_noise=0.1, var_prop_noise=0.1,
-                t_vis_noise=[0.1,0.15], t_prop_noise=[0.1,0.15],
                 disturb_hidden=False, t_disturb_hidden=0.15, d_hidden=None, seed=None):
   
   h = policy.init_hidden(batch_size=batch_size)
@@ -202,16 +198,6 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
   while not terminated:
     action, h = policy(obs,h)
     obs, terminated, info = env.step(action=action)
-
-    # Add noise to the observation
-    # vision noise: first two columns
-    if add_vis_noise:
-        if env.elapsed>=t_vis_noise[0] and env.elapsed<t_vis_noise[1]:
-            obs[:,:2] += th.normal(0,var_vis_noise,size=(batch_size,2))
-    # properioceptive noise: next 12 columns
-    if add_prop_noise:
-        if env.elapsed>=t_prop_noise[0] and env.elapsed<t_prop_noise[1]:
-            obs[:,2:14] += th.normal(0,var_prop_noise,size=(batch_size,12))
 
     # add disturn hidden activity
     if disturb_hidden:
@@ -251,7 +237,7 @@ if __name__ == "__main__":
       #directory_name = sys.argv[2]
       directory_name = 'Sim_simple_64'
       
-      iter_list = range(1) # 20
+      iter_list = range(20) # 20
       num_processes = len(iter_list)
       
       
@@ -263,38 +249,38 @@ if __name__ == "__main__":
           except Exception as e:
             print(f"Error in iteration {futures[future]}: {e}")
       
-      # with ProcessPoolExecutor(max_workers=num_processes) as executor:
-      #   futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=2010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-      #   for future in as_completed(futures):
-      #     try:
-      #       result = future.result()
-      #     except Exception as e:
-      #       print(f"Error in iteration {futures[future]}: {e}")
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=401, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
       
-      # with ProcessPoolExecutor(max_workers=num_processes) as executor:
-      #   futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=10010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-      #   for future in as_completed(futures):
-      #     try:
-      #       result = future.result()
-      #     except Exception as e:
-      #       print(f"Error in iteration {futures[future]}: {e}")
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=3201, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
       
 
-      # with ProcessPoolExecutor(max_workers=num_processes) as executor:
-      #   futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=7010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-      #   for future in as_completed(futures):
-      #     try:
-      #       result = future.result()
-      #     except Exception as e:
-      #       print(f"Error in iteration {futures[future]}: {e}")
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=1301, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
 
-      # with ProcessPoolExecutor(max_workers=num_processes) as executor:
-      #   futures = {executor.submit(train, model_num=iteration, ff_coefficient=-8, phase='FF2', n_batch=10010, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-      #   for future in as_completed(futures):
-      #     try:
-      #       result = future.result()
-      #     except Exception as e:
-      #       print(f"Error in iteration {futures[future]}: {e}")
+      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=3201, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
+        for future in as_completed(futures):
+          try:
+            result = future.result()
+          except Exception as e:
+            print(f"Error in iteration {futures[future]}: {e}")
       
 
           
