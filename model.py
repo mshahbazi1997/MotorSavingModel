@@ -235,14 +235,16 @@ if __name__ == "__main__":
 
     if trainall:
       #directory_name = sys.argv[2]
-      directory_name = 'Sim_simple_32'
+      directory_name = 'Sim_all_32'
       
       iter_list = range(20) # 20
       num_processes = len(iter_list)
+      #n_batches = [20010,401,3201,1301,3201] # for Sim_simple_XX
+      n_batches = [20010,2001,10001,7001,10001] # for Sim_all_XX
       
       
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=20010, directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=n_batches[0], directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
         for future in as_completed(futures):
           try:
             result = future.result()
@@ -250,16 +252,16 @@ if __name__ == "__main__":
             print(f"Error in iteration {futures[future]}: {e}")
       
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=401, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-        for future in as_completed(futures):
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=n_batches[1], directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        for future in as_completed(futures): # n_batch=401
           try:
             result = future.result()
           except Exception as e:
             print(f"Error in iteration {futures[future]}: {e}")
       
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=3201, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-        for future in as_completed(futures):
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=n_batches[2], directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        for future in as_completed(futures): # n_batch=3201
           try:
             result = future.result()
           except Exception as e:
@@ -267,16 +269,16 @@ if __name__ == "__main__":
       
 
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=1301, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-        for future in as_completed(futures):
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=n_batches[3], directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        for future in as_completed(futures): # n_batch=1301
           try:
             result = future.result()
           except Exception as e:
             print(f"Error in iteration {futures[future]}: {e}")
 
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=3201, directory_name=directory_name, loss_weight=None): iteration for iteration in iter_list}
-        for future in as_completed(futures):
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=n_batches[4], directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        for future in as_completed(futures): # n_batch=3201
           try:
             result = future.result()
           except Exception as e:
