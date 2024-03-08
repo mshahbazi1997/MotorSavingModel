@@ -59,7 +59,7 @@ def build_tdr(X,N):
 def project_onto_map(data,map,remove_mean=True):
     """
     Returns:
-    - data_proj (ndarray): Matrix of neural state coordinates on orthogonalized TDR axes
+    - data_p (ndarray): Matrix of neural state coordinates on orthogonalized TDR axes
     """
     data_p = deepcopy(data)
     # remove the mean
@@ -73,12 +73,11 @@ def project_onto_map(data,map,remove_mean=True):
         data_p[i] = (data[i]-mean_N) @ map
     return data_p
 
-def orth_wrt_tdr(us,tdr):
-    
-    us_orth = us - np.dot(tdr[:,0],us)/np.linalg.norm(tdr[:,0])**2 * tdr[:,0][:,None]
-    us_orth = us_orth - np.dot(tdr[:,1],us_orth)/np.linalg.norm(tdr[:,1])**2 * tdr[:,1][:,None]
-    us_orth_norm = us_orth/np.linalg.norm(us_orth)
-    # np.dot(beta_n2b_orth[:,1],us_orth) # sanity check
-
+def orth_wrt_map(us, map):
+    us_orth = us.copy()  # Start with the original vector
+    for i in range(map.shape[1]):  # Iterate over each column of the map
+        # Project us onto the current column and subtract the projection from us_orth
+        us_orth = us_orth - np.dot(map[:,i], us_orth)/np.linalg.norm(map[:,i])**2 * map[:,i][:,None]
+    us_orth_norm = us_orth / np.linalg.norm(us_orth)  # Normalize the orthogonal vector
     return us_orth_norm
 
