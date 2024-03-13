@@ -56,15 +56,19 @@ def build_tdr(X,N):
 
     return beta_n2b_orth
 
-def project_onto_map(data,map,remove_mean=True):
+def project_onto_map(data,map,remove_mean=True,mean_all=True):
     """
     Returns:
     - data_p (ndarray): Matrix of neural state coordinates on orthogonalized TDR axes
     """
     data_p = deepcopy(data)
     # remove the mean
-    combined_N = np.vstack(data)
-    mean_N = np.mean(combined_N, axis=0)
+
+    if mean_all==True:
+        combined_N = np.vstack(data)
+        mean_N = np.mean(combined_N, axis=0)
+    else:
+        mean_N = np.mean(data[0], axis=0)
 
     if remove_mean==False:
         mean_N = np.zeros_like(mean_N)

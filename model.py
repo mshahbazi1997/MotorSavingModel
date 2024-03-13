@@ -17,7 +17,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   """
   args:
   """
-  num_hidden = 32
+  num_hidden = 16
   interval = 100
   catch_trial_perc = 50
   all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2'])
@@ -231,7 +231,7 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
 if __name__ == "__main__":
     
     #trainall = int(sys.argv[1])
-    trainall = 1
+    trainall = 0
 
     if trainall:
       #directory_name = sys.argv[2]
@@ -241,6 +241,7 @@ if __name__ == "__main__":
       num_processes = len(iter_list)
       #n_batches = [20010,401,3201,1301,3201] # for Sim_simple_XX
       n_batches = [20010,2001,10001,7001,10001] # for Sim_all_XX
+      train_random = True
       
       
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
@@ -252,7 +253,7 @@ if __name__ == "__main__":
             print(f"Error in iteration {futures[future]}: {e}")
       
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=n_batches[1], directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=n_batches[1], directory_name=directory_name, loss_weight=None, train_random=train_random): iteration for iteration in iter_list}
         for future in as_completed(futures): # n_batch=401
           try:
             result = future.result()
@@ -260,7 +261,7 @@ if __name__ == "__main__":
             print(f"Error in iteration {futures[future]}: {e}")
       
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=n_batches[2], directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=n_batches[2], directory_name=directory_name, loss_weight=None, train_random=train_random): iteration for iteration in iter_list}
         for future in as_completed(futures): # n_batch=3201
           try:
             result = future.result()
@@ -269,7 +270,7 @@ if __name__ == "__main__":
       
 
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=n_batches[3], directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=n_batches[3], directory_name=directory_name, loss_weight=None, train_random=train_random): iteration for iteration in iter_list}
         for future in as_completed(futures): # n_batch=1301
           try:
             result = future.result()
@@ -277,7 +278,7 @@ if __name__ == "__main__":
             print(f"Error in iteration {futures[future]}: {e}")
 
       with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=n_batches[4], directory_name=directory_name, loss_weight=None, train_random=True): iteration for iteration in iter_list}
+        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=n_batches[4], directory_name=directory_name, loss_weight=None, train_random=train_random): iteration for iteration in iter_list}
         for future in as_completed(futures): # n_batch=3201
           try:
             result = future.result()
@@ -287,11 +288,19 @@ if __name__ == "__main__":
 
           
     else: ## training networks for each phase separately
-      ff_coefficient = int(sys.argv[2])
-      phase = sys.argv[3] # growing_up or anything else
-      n_batch = int(sys.argv[4])
-      directory_name = sys.argv[5]
-      train_single = int(sys.argv[6])
+      #ff_coefficient = int(sys.argv[2])
+      #phase = sys.argv[3] # growing_up or anything else
+      #n_batch = int(sys.argv[4])
+      #directory_name = sys.argv[5]
+      #train_single = int(sys.argv[6])
+
+
+      ff_coefficient = 0
+      phase = 'NF2'
+      n_batch = 1701
+      directory_name = 'Sim_simple_16'
+      train_single = 0
+      train_random = False
 
       if train_single:
         train(0,ff_coefficient,phase,n_batch=n_batch,directory_name=directory_name)
@@ -300,7 +309,7 @@ if __name__ == "__main__":
         num_processes = len(iter_list)
         
         with ProcessPoolExecutor(max_workers=num_processes) as executor:
-          futures = {executor.submit(train, iteration, ff_coefficient, phase, n_batch, directory_name): iteration for iteration in iter_list}
+          futures = {executor.submit(train, iteration, ff_coefficient, phase, n_batch, directory_name, train_random=train_random): iteration for iteration in iter_list}
           for future in as_completed(futures):
             try:
               result = future.result()
