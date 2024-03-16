@@ -30,6 +30,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
 
   weight_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights'), None)
+  #weight_file = None
   if weight_file is not None:
     cfg_file = next(Path(output_folder).glob(f'{model_name}_phase={phase}_*_cfg.json'))
 
@@ -231,15 +232,16 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
 if __name__ == "__main__":
     
     #trainall = int(sys.argv[1])
-    trainall = 0
+    trainall = 1
 
     if trainall:
       #directory_name = sys.argv[2]
-      directory_name = 'Sim_all_32'
+      directory_name = 'Sim_all_16'
       
       iter_list = range(20) # 20
       num_processes = len(iter_list)
-      #n_batches = [20010,401,3201,1301,3201] # for Sim_simple_XX
+      #n_batches = [20010,401,3201,1301,3201] # for Sim_simple_XX - old
+      #n_batches = [20010,6001,3201,6001,3201] # for Sim_simple_XX
       n_batches = [20010,2001,10001,7001,10001] # for Sim_all_XX
       train_random = True
       
@@ -296,8 +298,8 @@ if __name__ == "__main__":
 
 
       ff_coefficient = 0
-      phase = 'NF2'
-      n_batch = 1701
+      phase = 'NF1'
+      n_batch = 1601
       directory_name = 'Sim_simple_16'
       train_single = 0
       train_random = False
