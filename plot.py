@@ -38,10 +38,11 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis'):
 
     angle_set = np.deg2rad(np.arange(0, 360, 45))  # 8 directions
     #angle_set = np.deg2rad(np.array([0,45,60,75,90,105,120,135,180,225,315]))
-    color_list = [plt.cm.brg(cond / (2 * np.pi)) for cond in angle_set]
+    #color_list = [plt.cm.brg(cond / (2 * np.pi)) for cond in angle_set]
+    color = np.array([0.5,0.5,0.5]) 
 
     for i in range(n_reach):
-        ax.scatter(target_x[i], target_y[i],color=color_list[i])
+        ax.scatter(target_x[i], target_y[i],color=color,s=70) # color_list[i]
 
     # plot the line the connect initial and final positions
     for i in range(n_reach):
@@ -68,15 +69,20 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis'):
 def plot_learning(folder_name,num_model=16,phases={'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
 
     all_phase = list(phases.keys())
+    gap = 2000
 
     color_list = ['k','g','k','r']
     if show_saving:
         fig,ax = plt.subplots(2,1,figsize=figsize)
-    else: 
+    else:
         fig,ax = plt.subplots(1,1,figsize=figsize)
         ax=[ax]
 
     loss = {phase: [] for phase in phases.keys()}
+
+    xticks = []
+    xticklabels = []
+    current_x = 0
     for i,phase in enumerate(phases.keys()):
         for m in range(num_model):
             #print(m)
@@ -93,18 +99,32 @@ def plot_learning(folder_name,num_model=16,phases={'NF1':[0],'FF1':[8],'NF2':[0]
         loss[phase+'_mean'] = np.mean(loss[phase], axis=0)
         loss[phase+'_std'] = np.std(loss[phase], axis=0)
 
-        loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1)
-        if i > 0:
-            loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1) + np.max(loss[all_phase[i-1]+'_x'])
+        # For x-ticks, show the start and end of each batch range
+        batch_size = np.shape(loss[phase])[1]
+        xticks.extend([current_x, current_x + batch_size])
+        xticklabels.extend(['1', str(batch_size-1)])
+
+        x = np.arange(0, batch_size)
+
+        
+
+        #loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1)
+        #if i > 0:
+            #loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1) + np.max(loss[all_phase[i-1]+'_x']) + gap
             #np.shape(loss[phases[i-1]])[1]
         
-        ax[0].plot(loss[phase+'_x'],loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
-        ax[0].fill_between(loss[phase+'_x'], loss[phase+'_mean'] - loss[phase+'_std'], loss[phase+'_mean'] + loss[phase+'_std'], color=color_list[i], alpha=0.5)
+        #ax[0].plot(loss[phase+'_x'],loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
+        #ax[0].fill_between(loss[phase+'_x'], loss[phase+'_mean'] - loss[phase+'_std'], loss[phase+'_mean'] + loss[phase+'_std'], color=color_list[i], alpha=0.5)
+
+        ax[0].plot(x + current_x,loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase,linewidth=3)
+        ax[0].fill_between(x + current_x, loss[phase+'_mean'] - loss[phase+'_std'], loss[phase+'_mean'] + loss[phase+'_std'], color=color_list[i], alpha=0.5)
+
+        current_x += batch_size + gap
 
         if show_saving:
             if phase=='FF1' or phase=='FF2':
                 ax[1].plot(loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
-
+    ax[0].set_xticks(ticks=xticks, labels=xticklabels)
     #ax[1].legend()
     ax[0].legend()
     #ax[0].set_yscale('log')

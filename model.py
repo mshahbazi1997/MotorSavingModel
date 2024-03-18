@@ -17,7 +17,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   """
   args:
   """
-  num_hidden = 16
+  num_hidden = 64
   interval = 100
   catch_trial_perc = 50
   all_phase = np.array(['growing_up','NF1','FF1','NF2','FF2'])
@@ -236,7 +236,7 @@ if __name__ == "__main__":
 
     if trainall:
       #directory_name = sys.argv[2]
-      directory_name = 'Sim_all_16'
+      directory_name = 'Sim_all_64'
       
       iter_list = range(20) # 20
       num_processes = len(iter_list)
