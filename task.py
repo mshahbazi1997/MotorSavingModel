@@ -13,8 +13,8 @@ class CentreOutFF(mn.environment.Environment):
     super().__init__(*args, **kwargs)
     self.__name__ = "CentreOutFF"
     # check if we have K and B in kwargs
-    self.K = kwargs.get('K', 170)
-    self.B = kwargs.get('B', -1)
+    self.K = kwargs.get('K', 150)
+    self.B = kwargs.get('B', 0.5)
 
 
   def reset(self, *,
@@ -150,7 +150,7 @@ class CentreOutFF(mn.environment.Environment):
 
     # calculate endpoint force (External force)
     self.endpoint_load = get_endpoint_load(self)
-    mask = self.elapsed < self.go_cue_time
+    mask = self.elapsed < (self.go_cue_time + (self.vision_delay) * self.dt)
     self.endpoint_load[mask] = 0
 
     # calculate endpoint force (Internal force)

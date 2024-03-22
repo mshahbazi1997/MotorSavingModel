@@ -66,10 +66,9 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis'):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
 
-def plot_learning(folder_name,num_model=16,phases={'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
+def plot_learning(folder_name,num_model=16,phases={'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False,gap=2000):
 
     all_phase = list(phases.keys())
-    gap = 2000
 
     color_list = ['k','g','k','r']
     if show_saving:
@@ -249,36 +248,35 @@ def plot_traj(ax,X_latent_list, plot_scatter=1, marker=['x', 'o', '*', 's', 'D',
 
     #return fig, ax
 
-def plot_force(data,label,figsize=(10,15),dt=0.01):
-    fg, ax = plt.subplots(nrows=8,ncols=1,figsize=figsize)
-
-    color_list = ['m','c','g','b','r','y','k','orange']
-
-    x = np.linspace(0, np.shape(data[0]['endpoint_load'])[1]*dt, np.shape(data[0]['endpoint_load'])[1])
+def plot_force(ax,endpoint_load,velocity,color='b',dt=0.01):
+    
+    n_reach = np.shape(endpoint_load)[0]
+    x = np.linspace(0, np.shape(endpoint_load)[1]*dt, np.shape(endpoint_load)[1])
 
     max_force = 0
     max_vel = 0
-    for i in range(8):
-        for j in range(len(data)):
-            ep = np.linalg.norm(data[j]['endpoint_load'][i,:,:],axis=1)
-            vel = np.linalg.norm(data[j]['vel'][i,:,:],axis=1)
-            if np.max(ep)>max_force:
-                max_force = np.max(ep)
-            if np.max(vel)>max_vel:
-                max_vel = np.max(vel)
+    for i in range(n_reach):
 
-            ax[i].plot(x,ep,color=color_list[j],label=label[j])
-            ax[i].plot(x,8*vel,color=color_list[j],label='8 * vel ' + label[j],alpha=0.5,linestyle='--')
+        #ep = np.linalg.norm(endpoint_load[i,:,:],axis=1)
+        #vel = np.linalg.norm(velocity[i,:,:],axis=1)
+        ep = endpoint_load[i,:]
+        vel = velocity[i,:]
+        if np.max(ep)>max_force:
+            max_force = np.max(ep)
+        if np.max(vel)>max_vel:
+            max_vel = np.max(vel)
 
-        ax[i].axhline(y=00, color='k')
-        
+        ax[i].plot(x,ep,label='force',color=color,linewidth=5)
+        ax[i].plot(x,8*vel,label='8 * vel',alpha=0.5,linestyle='--',color=color,linewidth=5)
 
+        ax[i].axhline(y=00,color='k')
         ax[i].set_ylabel('Force [N]')
-    for i in range(8):
-        ax[i].set_ylim([-0.5,max_force+0.5])
+
+    for i in range(n_reach):
+        ax[i].set_ylim([-0.5,max_vel*8+0.5])
     ax[i].set_xlabel('Time [s]')
     ax[0].legend()
-    return fg, ax
+    return ax
 
 def plot_kinematic(vel,xy,tg,figsize=(10,15),dt=0.01):
     """
