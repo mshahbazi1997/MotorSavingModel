@@ -92,14 +92,30 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
     # Save losses
     losses['overall'].append(overall_loss.item())
     for key in loss_test:
-      losses[key].append(loss_test[key].item())
-    
-    losses['angle'].append(ang_dev.item())
-    losses['lateral'].append(lat_dev.item())
+      if key == 'position':
+        temp=[]
+        for jj in range(8):
+          temp.append(loss_test[key][jj].item())
+        losses[key].append(temp)
+      else:
+        losses[key].append(loss_test[key].item())
+
+    temp=[]
+    for jj in range(8):
+      temp.append(ang_dev[jj].item())
+    losses['angle'].append(temp)
+
+    temp=[]
+    for jj in range(8):
+      temp.append(lat_dev[jj].item())
+    losses['lateral'].append(temp)
+
+    #losses['angle'].append(ang_dev.item())
+    #losses['lateral'].append(lat_dev.item())
 
     # print progress
     if (batch % interval == 0) and (batch != 0):
-      print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, sum(losses['position'][-interval:])/interval))
+      print("Batch {}/{} Done, mean position loss: {}".format(batch, n_batch, np.mean(sum(np.array(losses['position'])[-interval:,:])/interval)))
 
       weight_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_weights")
       log_file = os.path.join(output_folder, f"{model_name}_phase={phase}_FFCoef={ff_coefficient}_log.json")
@@ -128,8 +144,10 @@ def test(env,policy,ff_coefficient=0,is_channel=False,
   _, loss_test = cal_loss(data,loss_weight=loss_weight)
 
   # anglular deviation
-  ang_dev = np.mean(calculate_angles_between_vectors(data['vel'], data['tg'], data['xy']))
-  lat_dev = np.mean(calculate_lateral_deviation(data['xy'], data['tg'])[0])
+  #ang_dev = np.mean(calculate_angles_between_vectors(data['vel'], data['tg'], data['xy']))
+  #lat_dev = np.mean(calculate_lateral_deviation(data['xy'], data['tg'])[0])
+  ang_dev = calculate_angles_between_vectors(data['vel'], data['tg'], data['xy'])
+  lat_dev = calculate_lateral_deviation(data['xy'], data['tg'])[0]
 
   return data, loss_test, ang_dev, lat_dev
 
@@ -145,7 +163,7 @@ def cal_loss(data, loss_weight=None):
     'hidden_jerk': None,}
 
   
-  loss['position'] = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1))
+  loss['position'] = th.mean(th.sum(th.abs(data['xy']-data['tg']), dim=-1),axis=1) # average over time not targets
   loss['jerk'] = th.mean(th.sum(th.square(th.diff(data['vel'], n=2, dim=1)), dim=-1))
   loss['muscle'] = th.mean(th.sum(data['all_force'], dim=-1))
   loss['muscle_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_force'], n=1, dim=1)), dim=-1))
@@ -170,7 +188,10 @@ def cal_loss(data, loss_weight=None):
 
   overall_loss = 0
   for key in loss_weighted:
-    overall_loss += loss_weighted[key]
+    if key=='position':
+      overall_loss += th.mean(loss_weighted[key])
+    else:
+      overall_loss += loss_weighted[key]
 
   return overall_loss, loss_weighted
 
@@ -233,61 +254,64 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
 if __name__ == "__main__":
     
     #trainall = int(sys.argv[1])
-    trainall = 0
+    trainall = 1
 
     if trainall:
-      #directory_name = sys.argv[2]
-      directory_name = 'Sim_all_64'
-      num_hidden = 64
-      
-      iter_list = range(20) # 20
-      num_processes = len(iter_list)
-      #n_batches = [20010,401,3201,1301,3201] # for Sim_simple_XX - old
-      #n_batches = [20010,6001,3201,6001,3201] # for Sim_simple_XX
-      n_batches = [20010,2001,10001,7001,10001] # for Sim_all_XX
-      train_random = True
-      
-      
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=n_batches[0], directory_name=directory_name, loss_weight=None, train_random=True,num_hidden=num_hidden): iteration for iteration in iter_list}
-        for future in as_completed(futures):
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
-      
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=n_batches[1], directory_name=directory_name, loss_weight=None, train_random=train_random,num_hidden=num_hidden): iteration for iteration in iter_list}
-        for future in as_completed(futures):
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
-      
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=n_batches[2], directory_name=directory_name, loss_weight=None, train_random=train_random,num_hidden=num_hidden): iteration for iteration in iter_list}
-        for future in as_completed(futures): 
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
-      
 
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=n_batches[3], directory_name=directory_name, loss_weight=None, train_random=train_random,num_hidden=num_hidden): iteration for iteration in iter_list}
-        for future in as_completed(futures): 
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
 
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=n_batches[4], directory_name=directory_name, loss_weight=None, train_random=train_random,num_hidden=num_hidden): iteration for iteration in iter_list}
-        for future in as_completed(futures): 
-          try:
-            result = future.result()
-          except Exception as e:
-            print(f"Error in iteration {futures[future]}: {e}")
+      for network_siz in [16,32,64,128,256]:
+        #directory_name = sys.argv[2]
+        directory_name = f'Sim_simp_{network_siz}'
+        num_hidden = network_siz
+        
+        iter_list = range(40) # 20
+        num_processes = len(iter_list)
+        #n_batches = [20010,401,3201,1301,3201] # for Sim_simple_XX - old
+        n_batches = [20010,10001,3201,10001,3201] # for Sim_simple_XX
+        #n_batches = [20010,2001,10001,7001,10001] # for Sim_all_XX
+        train_random = False
+        
+        
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='growing_up', n_batch=n_batches[0], directory_name=directory_name, loss_weight=None, train_random=True,num_hidden=num_hidden): iteration for iteration in iter_list}
+          for future in as_completed(futures):
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
+        
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF1', n_batch=n_batches[1], directory_name=directory_name, loss_weight=None, train_random=train_random,num_hidden=num_hidden): iteration for iteration in iter_list}
+          for future in as_completed(futures):
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
+        
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF1', n_batch=n_batches[2], directory_name=directory_name, loss_weight=None, train_random=train_random,num_hidden=num_hidden): iteration for iteration in iter_list}
+          for future in as_completed(futures): 
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
+        
+
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=0, phase='NF2', n_batch=n_batches[3], directory_name=directory_name, loss_weight=None, train_random=train_random,num_hidden=num_hidden): iteration for iteration in iter_list}
+          for future in as_completed(futures): 
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
+
+        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=8, phase='FF2', n_batch=n_batches[4], directory_name=directory_name, loss_weight=None, train_random=train_random,num_hidden=num_hidden): iteration for iteration in iter_list}
+          for future in as_completed(futures): 
+            try:
+              result = future.result()
+            except Exception as e:
+              print(f"Error in iteration {futures[future]}: {e}")
       
 
           
@@ -307,7 +331,7 @@ if __name__ == "__main__":
       directory_name = 'Sim_simple_32'
       num_hidden = 32
 
-      train_single = 0
+      train_single = 1
       train_random = False
       
       
