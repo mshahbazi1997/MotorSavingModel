@@ -273,7 +273,6 @@ def sweep_loss():
     return lw
 
 
-
 class modelLoss():
     def __init__(self):
         #self.n_param = 5
@@ -287,18 +286,29 @@ class modelLoss():
         #       np.exp(theta[2])*np.exp(-np.exp(theta[3])*self.x**2) +\
         #         np.exp(theta[4])*np.exp(-np.exp(theta[5])*self.x**1) + theta[6] 
         
-        pred = np.exp(theta[0])*np.exp(-np.exp(theta[1])*self.x**3) +\
-                np.exp(theta[2])*np.exp(-np.exp(theta[3])*self.x**1) + theta[4] 
+        #pred = np.exp(theta[0])*np.exp(-np.exp(theta[1])*self.x**3) +\
+        #        np.exp(theta[2])*np.exp(-np.exp(theta[3])*self.x**1) + theta[4] 
+        
+
+        # pred = np.exp(theta[0])*np.exp(-np.exp(theta[1])*self.x**=3) +\
+        #         np.exp(theta[2])*np.exp(-np.exp(theta[3])*self.x**1) + theta[4] 
+        pred = np.exp(theta[0])*np.exp(-np.exp(theta[1])*self.x**1) +\
+            + theta[2] 
+
 
         return pred
     def fro(self,theta,loss,lam=None):
         pred = self.predict(theta)
         return np.linalg.norm(loss-pred)+lam*np.sum(np.abs(theta))
-    def fit(self,loss,lam=None):
+    def fit(self,loss,lam=None,theta0=None):
         if lam is None:
             lam = 0
+        
         self.x = np.arange(len(loss))
-        theta0 = [-1,-1,-1,-1,20]
+
+        if theta0 is None:
+            #theta0 = [-4.87692324e-05, -9.65588447e-06,  2.65996536e+00, -4.56851626e+00,2.18185688e+01]
+            theta0 = [-1, -1,22]
         theta = minimize(self.fro,theta0,args=(loss,lam),method='Nelder-Mead',options={'maxiter':10000,'disp':False})
         self.theta = theta.x
         self.success = theta.success
@@ -306,33 +316,21 @@ class modelLoss():
         pred = self.predict()
         idx = np.where(pred<=loss_thresh)[0]
         return idx[0]
+    def get_rate(self):
+        return np.exp(self.theta[1])
     def random(self):
         pass
-        # idx = {'FF1':[],'FF2':[]}
-        # for m in range(num_model):
-        #     for i,phase in enumerate(phases.keys()):
-        #         l = loss[phase][m]
-        #         T = modelLoss()
-        #         T.fit(l,lam=0.0)
-        #         if phase=='FF1':
-        #             pred = T.predict()
-        #             loss_thresh = np.mean(pred[-100:])*1.10
-                    
-        #             #loss_thresh = T.theta[-1]*1.05
-        #         idx[phase].append(T.find_x(loss_thresh))
-
-
         # fig,ax = plt.subplots(1,1,figsize=(6,5))
-        # ax.plot(loss['FF2'][13],linestyle='-',color='b',label='data')
+        # ax.plot(loss['FF2'][mo],linestyle='-',color='b',label='data')
 
         # T = modelLoss()
-        # T.fit(loss['FF2'][13],lam=0.0)
+        # T.fit(loss['FF2'][mo],lam=0)
 
         # ax.plot(T.predict(),linestyle='--',color='r',label='pred')
-
-        # #loss_thresh = T.theta[-1]*1.05
-        # idx = T.find_x(loss_thresh)
-        # ax.axvline(idx,linestyle='--',color='k')
         # ax.legend()
-        # #saving_behav = np.array(idx['FF1'])-np.array(idx['FF2'])
+        # # ax.axvline(idx,linestyle='--',color='k')
+
+
+
+
 

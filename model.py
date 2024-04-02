@@ -259,7 +259,7 @@ if __name__ == "__main__":
     if trainall:
 
 
-      for network_siz in [16,32,64,128,256]:
+      for network_siz in [128,256]:
         #directory_name = sys.argv[2]
         directory_name = f'Sim_simp_{network_siz}'
         num_hidden = network_siz

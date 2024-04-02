@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import motornet as mn
 import numpy as np
-from pathlib import Path
 import json
+from copy import deepcopy
 from utils import *
 from get_utils import get_dir
 
@@ -66,72 +66,48 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis'):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
     
 
-def plot_learning(folder_name,num_model=16,phases={'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False,gap=2000):
+def plot_learning(loss,figsize=(6,10),show_saving=False,gap=2000,palette_colors = None):
 
-    all_phase = list(phases.keys())
+    if palette_colors is None:
+        palette_colors = {'FF1': 'g', 'FF2': 'r', 'NF1': 'k', 'NF2': 'k'}
 
-    color_list = ['k','g','k','r']
     if show_saving:
         fig,ax = plt.subplots(2,1,figsize=figsize)
     else:
         fig,ax = plt.subplots(1,1,figsize=figsize)
         ax=[ax]
 
-    loss = {phase: [] for phase in phases.keys()}
-
     xticks = []
     xticklabels = []
     current_x = 0
-    for i,phase in enumerate(phases.keys()):
-        for m in range(num_model):
-            #print(m)
-            if m in ignore:
-                continue
-            model_name = "model{:02d}".format(m)
-            _,_,log=get_dir(folder_name, model_name, phase, phases[phase][0])
-            log = json.load(open(log,'r'))
-            loss[phase].append(log[loss_type])
 
-        # Calculate window averages for all models
-        loss[phase] = [window_average(np.array(l), w) for l in loss[phase]]
+    loss2 = deepcopy(loss)
+
+    phases = list(loss.keys())
+    for i,phase in enumerate(phases):
+
         # Calculate the mean and standard deviation across models
-        loss[phase+'_mean'] = np.mean(loss[phase], axis=0)
-        loss[phase+'_std'] = np.std(loss[phase], axis=0)
+        loss2[phase+'_mean'] = np.mean(loss2[phase], axis=0)
+        loss2[phase+'_std'] = np.std(loss2[phase], axis=0)
 
         # For x-ticks, show the start and end of each batch range
-        batch_size = np.shape(loss[phase])[1]
+        batch_size = np.shape(loss2[phase])[1]
         xticks.extend([current_x, current_x + batch_size])
         xticklabels.extend(['1', str(batch_size-1)])
 
         x = np.arange(0, batch_size)
 
-        
-
-        #loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1)
-        #if i > 0:
-            #loss[phase+'_x'] = np.arange(1,np.shape(loss[phase])[1]+1) + np.max(loss[all_phase[i-1]+'_x']) + gap
-            #np.shape(loss[phases[i-1]])[1]
-        
-        #ax[0].plot(loss[phase+'_x'],loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
-        #ax[0].fill_between(loss[phase+'_x'], loss[phase+'_mean'] - loss[phase+'_std'], loss[phase+'_mean'] + loss[phase+'_std'], color=color_list[i], alpha=0.5)
-
-        ax[0].plot(x + current_x,loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase,linewidth=3)
-        ax[0].fill_between(x + current_x, loss[phase+'_mean'] - loss[phase+'_std'], loss[phase+'_mean'] + loss[phase+'_std'], color=color_list[i], alpha=0.5)
+        ax[0].plot(x + current_x,loss2[phase+'_mean'],color=palette_colors[phase],linestyle='-',label=phase,linewidth=3)
+        ax[0].fill_between(x + current_x, loss2[phase+'_mean'] - loss2[phase+'_std'], loss2[phase+'_mean'] + loss2[phase+'_std'], color=palette_colors[phase], alpha=0.5)
 
         current_x += batch_size + gap
 
         if show_saving:
             if phase=='FF1' or phase=='FF2':
-                ax[1].plot(loss[phase+'_mean'],color=color_list[i],linestyle='-',label=phase)
+                ax[1].plot(loss2[phase+'_mean'],color=palette_colors[phase],linestyle='-',label=phase)
     ax[0].set_xticks(ticks=xticks, labels=xticklabels)
-    #ax[1].legend()
     ax[0].legend()
-    #ax[0].set_yscale('log')
-
-    ax[0].set_ylabel(loss_type)
-    #ax[1].set_ylabel(loss_type)
-
-    ax[0].axhline(y=np.mean(loss['NF1_mean'][-10:]), color='k', linestyle='--', linewidth=1)
+    ax[0].axhline(y=np.mean(loss2['NF1_mean'][-10:]), color='k', linestyle='--', linewidth=1)
 
     return fig, ax
 def plot_learning_perturbation(folder_name,num_model=20,phases={'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):

@@ -54,6 +54,35 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
     return (data, Loss) if return_loss else data
 
 
+def get_loss(folder_name,num_model,phases,loss_type='position',w=1,target=None,ignore=[]):
+    from utils import window_average
+    import json
+
+    # load behavior and start fitting
+    loss = {phase: [] for phase in phases.keys()}
+    for i,phase in enumerate(phases.keys()):
+        for m in range(num_model):
+            if m in ignore:
+                continue
+            model_name = "model{:02d}".format(m)
+            _,_,log=get_dir(folder_name, model_name, phase, phases[phase][0])
+            log = json.load(open(log,'r'))
+            
+            if all(isinstance(item, list) for item in log[loss_type]):
+                if target is None:
+                    loss[phase].append(list(np.array(log[loss_type]).mean(axis=1)))
+                else:
+                    loss[phase].append(list(np.array(log[loss_type])[:,target]))
+            else:    
+                loss[phase].append(log[loss_type])
+
+        # Calculate window averages for all models
+        loss[phase] = [window_average(np.array(l), w) for l in loss[phase]]
+
+    return loss
+
+
+
 
 def get_weights_G(folder_name,model_name,phase={'NF1':[0]}):
     weights = ['gru.weight_ih_l0','gru.bias_ih_l0','gru.weight_hh_l0','gru.bias_hh_l0','fc.weight','fc.bias','h0']
