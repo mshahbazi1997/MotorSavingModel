@@ -77,7 +77,8 @@ def get_loss(folder_name,num_model,phases,loss_type='position',w=1,target=None,i
                 loss[phase].append(log[loss_type])
 
         # Calculate window averages for all models
-        loss[phase] = [window_average(np.array(l), w) for l in loss[phase]]
+        if w>1:
+            loss[phase] = [window_average(np.array(l), w) for l in loss[phase]]
 
     return loss
 
