@@ -110,6 +110,8 @@ def plot_learning(loss,figsize=(6,10),show_saving=False,gap=2000,palette_colors 
     ax[0].axhline(y=np.mean(loss2['NF1_mean'][-10:]), color='k', linestyle='--', linewidth=1)
 
     return fig, ax
+
+
 def plot_learning_perturbation(folder_name,num_model=20,phases={'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]},w=1,figsize=(6,10),loss_type='position',ignore=[],show_saving=False):
 
     all_phase = list(phases.keys())

@@ -18,12 +18,38 @@ def get_dir(folder_name,model_name,phase,ff_coef,batch=None):
     """
 
     data_dir = os.path.join(base_dir,folder_name)
-    cfg_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_cfg.json'))[0]
-    loss_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_log.json'))[0]
-    if batch is None:
-        weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_weights'))[0]
-    else:
-        weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coef}_weights'))[0]
+
+    try:
+        cfg_files = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_cfg.json'))
+        cfg_file = cfg_files[0] if cfg_files else None
+
+        loss_files = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_log.json'))
+        loss_file = loss_files[0] if loss_files else None
+
+        if batch is None:
+            weight_files = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_weights*'))
+        else:
+            weight_files = list(Path(data_dir).glob(f'{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coef}_weights*'))
+        weight_file = weight_files[0] if weight_files else None
+
+        # Check if any file does not exist
+        if not cfg_file or not loss_file or not weight_file:
+            found = False
+        else:
+            found = True
+    except Exception as e:
+        cfg_file = None
+        loss_file = None
+        weight_file = None
+
+        found = False
+
+    # cfg_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_cfg.json'))[0]
+    # loss_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_log.json'))[0]
+    # if batch is None:
+    #     weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_weights'))[0]
+    # else:
+    #     weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coef}_weights'))[0]
     return weight_file, cfg_file, loss_file
 
 def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=False,
@@ -62,10 +88,13 @@ def get_loss(folder_name,num_model,phases,loss_type='position',w=1,target=None,i
     loss = {phase: [] for phase in phases.keys()}
     for i,phase in enumerate(phases.keys()):
         for m in range(num_model):
-            if m in ignore:
-                continue
+            # if m in ignore:
+            #     continue
             model_name = "model{:02d}".format(m)
-            _,_,log=get_dir(folder_name, model_name, phase, phases[phase][0])
+            found, _,_,log=get_dir(folder_name, model_name, phase, phases[phase][0])
+            if found==False:
+                continue
+            
             log = json.load(open(log,'r'))
             
             if all(isinstance(item, list) for item in log[loss_type]):
