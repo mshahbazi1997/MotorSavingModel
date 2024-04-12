@@ -69,7 +69,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
     # test the network right at the beginning
-    data, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight)
+    _, loss_test, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,loss_weight=loss_weight)
 
 
     # train the network
@@ -80,7 +80,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
     overall_loss, _ = cal_loss(data, loss_weight=loss_weight)
     
-    # update the network    
+    # update the network
     optimizer.zero_grad()
     overall_loss.backward()
     th.nn.utils.clip_grad_norm_(policy.parameters(), max_norm=1.)
@@ -91,12 +91,16 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
 
     # Save losses
     losses['overall'].append(overall_loss.item())
+
+
     for key in loss_test:
       if key == 'position':
+        
         temp=[]
         for jj in range(8):
           temp.append(loss_test[key][jj].item())
         losses[key].append(temp)
+
       else:
         losses[key].append(loss_test[key].item())
 
@@ -275,7 +279,7 @@ if __name__ == "__main__":
     if trainall:
 
       phases = ['growing_up','NF1','FF1','NF2','FF2','FF2']
-      ff_coeff = [0,0,8,0,8,-8]
+      ff_coeffs = [0,0,8,0,8,-8]
 
       n_batches = [20010,10001,3201,10001,3201,3201] # for Sim_XX
       #n_batches = [20010,2001,10001,7001,10001,10001] # for Sim_all_XX
@@ -283,8 +287,10 @@ if __name__ == "__main__":
       train_rand = [True,train_random,train_random,train_random,train_random]
 
       for i,phase in enumerate(phases):
+        ff_coeff = ff_coeffs[i]
+        n_batch = n_batches[i]
         with ProcessPoolExecutor(max_workers=num_processes) as executor:
-          futures = {executor.submit(train, model_num=iteration, ff_coefficient=ff_coeff[i], phase=phase, n_batch=n_batches[i], 
+          futures = {executor.submit(train, model_num=iteration, ff_coefficient=ff_coeff, phase=phase, n_batch=n_batch, 
                                      directory_name=directory_name, train_random=train_rand[i], num_hidden=num_hidden, start_again=start_again)
                                      : iteration for iteration in iter_list}
           for future in as_completed(futures):

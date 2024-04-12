@@ -7,6 +7,7 @@ import torch as th
 import PcmPy as pcm
 from PcmPy.matrix import indicator
 from scipy.linalg import pinv
+import re
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
@@ -79,6 +80,25 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
             Loss.append(loss)
     return (data, Loss) if return_loss else data
 
+def return_ignore(folder_name,num_model,phase='FF2',ff_coef=8):
+    ignore = []
+    data_dir = os.path.join(base_dir,folder_name)
+    
+    loss_files = list(Path(data_dir).glob(f'*_phase={phase}_FFCoef={ff_coef}_log.json'))
+
+    models = []
+
+    for file_path in loss_files:
+        file_name = file_path.name
+        model_number_match = re.search(r'model(\d+)_phase',file_name)
+        if model_number_match:
+            models.append(int(model_number_match.group(1)))
+
+    #print(models)
+    ignore = [model for model in range(num_model) if model not in models]
+
+    
+    return ignore
 
 def get_loss(folder_name,num_model,phases,loss_type='position',w=1,target=None,ignore=[]):
     from utils import window_average
@@ -88,13 +108,11 @@ def get_loss(folder_name,num_model,phases,loss_type='position',w=1,target=None,i
     loss = {phase: [] for phase in phases.keys()}
     for i,phase in enumerate(phases.keys()):
         for m in range(num_model):
-            # if m in ignore:
-            #     continue
-            model_name = "model{:02d}".format(m)
-            found, _,_,log=get_dir(folder_name, model_name, phase, phases[phase][0])
-            if found==False:
+            if m in ignore:
                 continue
-            
+            model_name = "model{:02d}".format(m)
+            _,_,log=get_dir(folder_name, model_name, phase, phases[phase][0])
+
             log = json.load(open(log,'r'))
             
             if all(isinstance(item, list) for item in log[loss_type]):

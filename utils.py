@@ -3,31 +3,10 @@ import datetime
 import motornet as mn
 import numpy as np
 from scipy.optimize import minimize
-from pathlib import Path
+import pandas as pd
 from itertools import product
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
-
-
-# def create_directory(directory_name=None):
-#     if directory_name is None:
-#         directory_name = datetime.datetime.now().date().isoformat()
-
-#     # Get the user's home directory
-#     home_directory = os.path.expanduser("~")
-
-#     # Create the full directory path
-#     directory_path = os.path.join(home_directory, "Documents", "Data","MotorNet", directory_name)
-#     #directory_path = os.path.join(home_directory, "Dropbox (Personal)", "Data","MotorNet", directory_name)
-
-#     # Check if the directory exists
-#     if not os.path.exists(directory_path):
-#         # Create the directory if it doesn't exist
-#         os.makedirs(directory_path)
-#         print(f"Directory '{directory_path}' created successfully.")
-
-#     # Return the created directory's name (whether it was newly created or already existed)
-#     return directory_path
 
 def window_average(x, w=10):
     rows = int(np.size(x)/w) # round to (floor) int
@@ -318,19 +297,81 @@ class modelLoss():
         return idx[0]
     def get_rate(self):
         return np.exp(self.theta[1])
-    def random(self):
-        pass
-        # fig,ax = plt.subplots(1,1,figsize=(6,5))
-        # ax.plot(loss['FF2'][mo],linestyle='-',color='b',label='data')
+    
+def init_and_rate(folder_name_init,sizes,num_model,loss_type='lateral',check_fit=False):
+    
+    from get_utils import get_loss, return_ignore
+    import matplotlib.pyplot as plt
 
-        # T = modelLoss()
-        # T.fit(loss['FF2'][mo],lam=0)
+    T = pd.DataFrame()
+    L = pd.DataFrame()
 
-        # ax.plot(T.predict(),linestyle='--',color='r',label='pred')
-        # ax.legend()
-        # # ax.axvline(idx,linestyle='--',color='k')
+    phases = {'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]}
+
+    for s in sizes:
+
+        folder_name = f'{folder_name_init}_{s}'
+        ignore = return_ignore(folder_name,num_model)
+
+        loss = get_loss(folder_name,num_model,phases,loss_type=loss_type,w=1,ignore=ignore,target=None)
+
+        # get initial loss
+        data1 = {'NF1':[],'FF1':[],'NF2':[],'FF2':[]}
+        for p in list(data1.keys()):
+            index=0
+            if p=='NF1' or p=='NF2':
+                index=-1
+            data1[p] = list(np.array(loss[p])[:,index])
+
+        # Fit data
+        loss = get_loss(folder_name,num_model,phases,loss_type=loss_type,w=10,ignore=ignore,target=None)
+        data2 = {'FF1':[],'FF2':[]}
+        pred = {'FF1':[],'FF2':[]}
+        for m in range(len(loss['FF1'])):
+            for i,phase in enumerate(data2.keys()):
+                l = loss[phase][m]
+
+                model = modelLoss()
+                if loss_type == 'position':
+                    theta0=None
+                else:
+                    theta0=[np.log(l[0]),np.log(0.004),l[-1]]
+                model.fit(l,lam=0.0,theta0=theta0)
+
+                pred[phase].append(model.predict())
+                data2[phase].append(model.get_rate())
+        
+        # Check the fits
+        if check_fit:
+            fig,ax = plt.subplots(1,2,figsize=(6,5))
+            ax[0].plot(np.mean(loss['FF1'],axis=0),linestyle='-',color='b',label='data')
+            ax[0].plot(np.mean(pred['FF1'],axis=0),linestyle='--',color='r',label='pred')
+            ax[0].legend()
+
+            ax[1].plot(np.mean(loss['FF2'],axis=0),linestyle='-',color='b',label='data')
+            ax[1].plot(np.mean(pred['FF2'],axis=0),linestyle='--',color='r',label='pred')
+            ax[1].legend()
+            plt.show()
+
+        T = pd.concat([T, create_dataframe(data1, s, loss_type)], ignore_index=True)
+        L = pd.concat([L, create_dataframe(data2, s, loss_type)], ignore_index=True)
+
+    T['feature'] = 'init'
+    L['feature'] = 'rate'
+
+    # Concatenate T and L along the rows with ignore_index=True
+    D = pd.concat([T, L], ignore_index=True)
+    return D
 
 
 
 
-
+def create_dataframe(idx, siz, loss_type):
+    data = []
+    for p in list(idx.keys()):
+        val = idx[p]
+        data.extend([
+            {'mn': i + 1, 'phase': p, 'value': v, 'size': siz, 'lt': loss_type}
+            for i, v in enumerate(val)
+        ])
+    return pd.DataFrame(data)
