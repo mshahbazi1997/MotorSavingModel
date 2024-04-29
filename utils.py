@@ -1,10 +1,11 @@
 import os
-import datetime
 import motornet as mn
 import numpy as np
 from scipy.optimize import minimize
 import pandas as pd
 from itertools import product
+import matplotlib.pyplot as plt
+
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
@@ -21,7 +22,7 @@ def load_env(task,cfg=None,dT=None):
 
         action_noise         = 1e-4
         proprioception_noise = 1e-3
-        vision_noise         = 1e-4 
+        vision_noise         = 1e-4
         vision_delay         = 0.07
         proprioception_delay = 0.02
 
@@ -298,80 +299,72 @@ class modelLoss():
     def get_rate(self):
         return np.exp(self.theta[1])
     
-def init_and_rate(folder_name_init,sizes,num_model,loss_type='lateral',check_fit=False):
+def get_initial_loss(loss):
     
-    from get_utils import get_loss, return_ignore
-    import matplotlib.pyplot as plt
+    T = pd.DataFrame()
+
+    # get initial loss
+    data = {'NF1':[],'FF1':[],'NF2':[],'FF2':[]}
+    for p in list(data.keys()):
+        index=0
+        if p=='NF1' or p=='NF2':
+            index=-1
+        data[p] = list(np.array(loss[p])[:,index])
+
+    T = create_dataframe(data)
+    T['feature'] = 'init'
+    
+    return T
+
+def get_rate(loss,w=10,check_fit=False):
+
+    if w>1:
+        for phase in loss.keys():
+            loss[phase] = [window_average(np.array(l), w) for l in loss[phase]]
+    
 
     T = pd.DataFrame()
-    L = pd.DataFrame()
 
-    phases = {'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]}
+    # Fit data
+    data = {'FF1':[],'FF2':[]} # this will contain the rate
+    pred = {'FF1':[],'FF2':[]} # just for checking the fit
+    
+    for m in range(len(loss['FF1'])):
+        for _,phase in enumerate(data.keys()):
+            l = loss[phase][m]
 
-    for s in sizes:
+            model = modelLoss()
 
-        folder_name = f'{folder_name_init}_{s}'
-        ignore = return_ignore(folder_name,num_model)
+            theta0=[np.log(l[0]),np.log(0.004),l[-1]]
+            model.fit(l,lam=0.0,theta0=theta0)
 
-        loss = get_loss(folder_name,num_model,phases,loss_type=loss_type,w=1,ignore=ignore,target=None)
+            pred[phase].append(model.predict())
+            data[phase].append(model.get_rate())
+    
+    T = create_dataframe(data)
+    T['feature'] = 'rate'
 
-        # get initial loss
-        data1 = {'NF1':[],'FF1':[],'NF2':[],'FF2':[]}
-        for p in list(data1.keys()):
-            index=0
-            if p=='NF1' or p=='NF2':
-                index=-1
-            data1[p] = list(np.array(loss[p])[:,index])
+    # Check the fits
+    if check_fit:
+        _,ax = plt.subplots(1,2,figsize=(6,5))
+        ax[0].plot(np.mean(loss['FF1'],axis=0),linestyle='-',color='b',label='data')
+        ax[0].plot(np.mean(pred['FF1'],axis=0),linestyle='--',color='r',label='pred')
+        ax[0].legend()
 
-        # Fit data
-        loss = get_loss(folder_name,num_model,phases,loss_type=loss_type,w=10,ignore=ignore,target=None)
-        data2 = {'FF1':[],'FF2':[]}
-        pred = {'FF1':[],'FF2':[]}
-        for m in range(len(loss['FF1'])):
-            for i,phase in enumerate(data2.keys()):
-                l = loss[phase][m]
+        ax[1].plot(np.mean(loss['FF2'],axis=0),linestyle='-',color='b',label='data')
+        ax[1].plot(np.mean(pred['FF2'],axis=0),linestyle='--',color='r',label='pred')
+        ax[1].legend()
+        plt.show()
 
-                model = modelLoss()
-                if loss_type == 'position':
-                    theta0=None
-                else:
-                    theta0=[np.log(l[0]),np.log(0.004),l[-1]]
-                model.fit(l,lam=0.0,theta0=theta0)
-
-                pred[phase].append(model.predict())
-                data2[phase].append(model.get_rate())
-        
-        # Check the fits
-        if check_fit:
-            fig,ax = plt.subplots(1,2,figsize=(6,5))
-            ax[0].plot(np.mean(loss['FF1'],axis=0),linestyle='-',color='b',label='data')
-            ax[0].plot(np.mean(pred['FF1'],axis=0),linestyle='--',color='r',label='pred')
-            ax[0].legend()
-
-            ax[1].plot(np.mean(loss['FF2'],axis=0),linestyle='-',color='b',label='data')
-            ax[1].plot(np.mean(pred['FF2'],axis=0),linestyle='--',color='r',label='pred')
-            ax[1].legend()
-            plt.show()
-
-        T = pd.concat([T, create_dataframe(data1, s, loss_type)], ignore_index=True)
-        L = pd.concat([L, create_dataframe(data2, s, loss_type)], ignore_index=True)
-
-    T['feature'] = 'init'
-    L['feature'] = 'rate'
-
-    # Concatenate T and L along the rows with ignore_index=True
-    D = pd.concat([T, L], ignore_index=True)
-    return D
+    return T
 
 
-
-
-def create_dataframe(idx, siz, loss_type):
+def create_dataframe(idx):
     data = []
     for p in list(idx.keys()):
         val = idx[p]
         data.extend([
-            {'mn': i + 1, 'phase': p, 'value': v, 'size': siz, 'lt': loss_type}
+            {'mn': i + 1, 'phase': p, 'value': v}
             for i, v in enumerate(val)
         ])
     return pd.DataFrame(data)

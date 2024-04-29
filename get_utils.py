@@ -3,11 +3,13 @@ from pathlib import Path
 from utils import load_stuff
 from model import test
 import numpy as np
-import torch as th
-import PcmPy as pcm
-from PcmPy.matrix import indicator
-from scipy.linalg import pinv
 import re
+
+#import torch as th
+#import PcmPy as pcm
+#from PcmPy.matrix import indicator
+#from scipy.linalg import pinv
+
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
@@ -132,35 +134,35 @@ def get_loss(folder_name,num_model,phases,loss_type='position',w=1,target=None,i
 
 
 
-def get_weights_G(folder_name,model_name,phase={'NF1':[0]}):
-    weights = ['gru.weight_ih_l0','gru.bias_ih_l0','gru.weight_hh_l0','gru.bias_hh_l0','fc.weight','fc.bias','h0']
-    weights_dict = {weight:[] for weight in weights}
+# def get_weights_G(folder_name,model_name,phase={'NF1':[0]}):
+#     weights = ['gru.weight_ih_l0','gru.bias_ih_l0','gru.weight_hh_l0','gru.bias_hh_l0','fc.weight','fc.bias','h0']
+#     weights_dict = {weight:[] for weight in weights}
 
-    count = 0
-    for i,p in enumerate(phase.keys()):
-        for f in phase[p]:
-            count += 1
-            weight_file, _, _ = get_dir(folder_name,model_name,p,f)
-            w = th.load(weight_file)
-            for weight in weights:
-                weights_dict[weight].append(np.ravel(w[weight].numpy()))
+#     count = 0
+#     for i,p in enumerate(phase.keys()):
+#         for f in phase[p]:
+#             count += 1
+#             weight_file, _, _ = get_dir(folder_name,model_name,p,f)
+#             w = th.load(weight_file)
+#             for weight in weights:
+#                 weights_dict[weight].append(np.ravel(w[weight].numpy()))
     
-    n_cond = count
-    cond_vec = np.arange(0,n_cond)
-    part_vec = np.zeros_like(cond_vec)
+#     n_cond = count
+#     cond_vec = np.arange(0,n_cond)
+#     part_vec = np.zeros_like(cond_vec)
 
-    G = np.zeros((len(weights),n_cond,n_cond)) # Allocate memory
-    rdm = np.zeros_like(G) 
-    for i,weight in enumerate(weights):
+#     G = np.zeros((len(weights),n_cond,n_cond)) # Allocate memory
+#     rdm = np.zeros_like(G) 
+#     for i,weight in enumerate(weights):
 
-        Y = np.array(weights_dict[weight])
-        N , n_channel = Y.shape
-        X = pcm.matrix.indicator(part_vec)
-        Y -= X @ pinv(X) @ Y # Remove mean
-        Z = cond_vec
-        Z = indicator(Z)
-        A = pinv(Z) @ Y
+#         Y = np.array(weights_dict[weight])
+#         N , n_channel = Y.shape
+#         X = pcm.matrix.indicator(part_vec)
+#         Y -= X @ pinv(X) @ Y # Remove mean
+#         Z = cond_vec
+#         Z = indicator(Z)
+#         A = pinv(Z) @ Y
 
-        G[i,:,:] = A @ A.T
-        rdm[i,:,:] = pcm.G_to_dist(G[i,:,:])
-    return G, rdm
+#         G[i,:,:] = A @ A.T
+#         rdm[i,:,:] = pcm.G_to_dist(G[i,:,:])
+#     return G, rdm
