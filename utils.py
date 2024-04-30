@@ -5,6 +5,7 @@ from scipy.optimize import minimize
 import pandas as pd
 from itertools import product
 import matplotlib.pyplot as plt
+from copy import deepcopy
 
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
@@ -317,10 +318,10 @@ def get_initial_loss(loss):
     return T
 
 def get_rate(loss,w=10,check_fit=False):
-
+    loss2 = deepcopy(loss)
     if w>1:
-        for phase in loss.keys():
-            loss[phase] = [window_average(np.array(l), w) for l in loss[phase]]
+        for phase in loss2.keys():
+            loss2[phase] = [window_average(np.array(l), w) for l in loss2[phase]]
     
 
     T = pd.DataFrame()
@@ -329,9 +330,9 @@ def get_rate(loss,w=10,check_fit=False):
     data = {'FF1':[],'FF2':[]} # this will contain the rate
     pred = {'FF1':[],'FF2':[]} # just for checking the fit
     
-    for m in range(len(loss['FF1'])):
+    for m in range(len(loss2['FF1'])):
         for _,phase in enumerate(data.keys()):
-            l = loss[phase][m]
+            l = loss2[phase][m]
 
             model = modelLoss()
 
@@ -347,11 +348,11 @@ def get_rate(loss,w=10,check_fit=False):
     # Check the fits
     if check_fit:
         _,ax = plt.subplots(1,2,figsize=(6,5))
-        ax[0].plot(np.mean(loss['FF1'],axis=0),linestyle='-',color='b',label='data')
+        ax[0].plot(np.mean(loss2['FF1'],axis=0),linestyle='-',color='b',label='data')
         ax[0].plot(np.mean(pred['FF1'],axis=0),linestyle='--',color='r',label='pred')
         ax[0].legend()
 
-        ax[1].plot(np.mean(loss['FF2'],axis=0),linestyle='-',color='b',label='data')
+        ax[1].plot(np.mean(loss2['FF2'],axis=0),linestyle='-',color='b',label='data')
         ax[1].plot(np.mean(pred['FF2'],axis=0),linestyle='--',color='r',label='pred')
         ax[1].legend()
         plt.show()

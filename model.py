@@ -281,8 +281,10 @@ if __name__ == "__main__":
       phases = ['growing_up','NF1','FF1','NF2','FF2','FF2']
       ff_coeffs = [0,0,8,0,8,-8]
 
-      n_batches = [20010,10001,3201,10001,3201,3201] # for Sim_XX
-      #n_batches = [20010,2001,10001,7001,10001,10001] # for Sim_all_XX
+      n_batches = [20010,10001,3201,10001,3201,3201] # for Sim_fixed_XX
+      #n_batches = [20010,2001,10001,7001,10001,10001] # for Sim_random_XX
+
+      #n_batches = [10,10,10,10,10,10] # for test
       
       train_rand = [True,train_random,train_random,train_random,train_random]
 
