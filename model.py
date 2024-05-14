@@ -13,7 +13,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
 
 
-def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,directory_name=None,loss_weight=None,train_random=False,start_again=False,num_hidden=128):
+def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,directory_name=None,loss_weight=None,train_random=False,start_again=False,n_hidden=128):
   """
   args:
   """
@@ -64,7 +64,7 @@ def train(model_num=1,ff_coefficient=0,phase='growing_up',n_batch=10010,director
   freeze_output_layer = freeze_input_layer = (phase != 'growing_up')
 
   env, policy, optimizer, scheduler = load_stuff(cfg_file=cfg_file,weight_file=weight_file,phase=phase,
-                                                 freeze_output_layer=freeze_output_layer,freeze_input_layer=freeze_input_layer,num_hidden=num_hidden)
+                                                 freeze_output_layer=freeze_output_layer,freeze_input_layer=freeze_input_layer,n_hidden=n_hidden)
   batch_size = 32
   for batch in tqdm(range(n_batch), desc=f"Training {phase}", unit="batch"):
 
@@ -272,9 +272,9 @@ if __name__ == "__main__":
 
 
     directory_name = f'Sim_{name[int(train_random)]}_{network_siz}'
-    num_hidden = int(network_siz)      
+    n_hidden = int(network_siz)      
     iter_list = range(n_networks) # 20
-    num_processes = len(iter_list)
+    n_process = len(iter_list)
 
     if trainall:
 
@@ -291,9 +291,9 @@ if __name__ == "__main__":
       for i,phase in enumerate(phases):
         ff_coeff = ff_coeffs[i]
         n_batch = n_batches[i]
-        with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        with ProcessPoolExecutor(max_workers=n_process) as executor:
           futures = {executor.submit(train, model_num=iteration, ff_coefficient=ff_coeff, phase=phase, n_batch=n_batch, 
-                                     directory_name=directory_name, train_random=train_rand[i], num_hidden=num_hidden, start_again=start_again)
+                                     directory_name=directory_name, train_random=train_rand[i], n_hidden=n_hidden, start_again=start_again)
                                      : iteration for iteration in iter_list}
           for future in as_completed(futures):
             try:
@@ -303,9 +303,9 @@ if __name__ == "__main__":
 
     else: ## training networks for each phase separately
 
-      with ProcessPoolExecutor(max_workers=num_processes) as executor:
+      with ProcessPoolExecutor(max_workers=n_process) as executor:
           futures = {executor.submit(train, model_num=iteration, ff_coefficient=ff_coeff, phase=phase, n_batch=n_batch, 
-                                     directory_name=directory_name, train_random=train_random, num_hidden=num_hidden, start_again=start_again)
+                                     directory_name=directory_name, train_random=train_random, n_hidden=n_hidden, start_again=start_again)
                                      : iteration for iteration in iter_list}
           for future in as_completed(futures):
             try:

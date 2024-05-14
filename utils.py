@@ -66,13 +66,13 @@ def load_env(task,cfg=None,dT=None):
     return env
 
 
-def load_policy(n_input,n_output,weight_file=None,phase='growing_up',freeze_output_layer=False,freeze_input_layer=False,num_hidden=128):
+def load_policy(n_input,n_output,weight_file=None,phase='growing_up',freeze_output_layer=False,freeze_input_layer=False,n_hidden=128):
 
     import torch as th
     device = th.device("cpu")
     
     from policy import Policy
-    policy = Policy(n_input, num_hidden, n_output, device=device, 
+    policy = Policy(n_input, n_hidden, n_output, device=device, 
                     freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer)
     
     if weight_file is not None:
@@ -88,7 +88,7 @@ def load_policy(n_input,n_output,weight_file=None,phase='growing_up',freeze_outp
     return policy, optimizer, scheduler
 
 
-def load_stuff(cfg_file,weight_file,phase='growing_up',freeze_output_layer=False, freeze_input_layer=False,num_hidden=128):
+def load_stuff(cfg_file,weight_file,phase='growing_up',freeze_output_layer=False, freeze_input_layer=False,n_hidden=128):
     # also get K and B
     import json
     from task import CentreOutFF
@@ -104,7 +104,7 @@ def load_stuff(cfg_file,weight_file,phase='growing_up',freeze_output_layer=False
 
     # load policy
     policy, optimizer, scheduler = load_policy(n_input,n_output,weight_file=weight_file,phase=phase,
-                                               freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer,num_hidden=num_hidden)
+                                               freeze_output_layer=freeze_output_layer, freeze_input_layer=freeze_input_layer,n_hidden=n_hidden)
 
     return env, policy, optimizer, scheduler
         

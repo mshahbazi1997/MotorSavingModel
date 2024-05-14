@@ -57,7 +57,7 @@ def get_dir(folder_name,model_name,phase,ff_coef,batch=None):
 
 def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=False,
              batch_size=8,catch_trial_perc=0,condition='test',go_cue_random=None,return_loss=False,
-             disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None,batch=None,seed=None,num_hidden=128):
+             disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None,batch=None,seed=None,n_hidden=128):
     
     data=[]
     Loss=[]
@@ -67,7 +67,7 @@ def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=Fa
             count += 1
 
             weight_file, cfg_file, _ = get_dir(folder_name,model_name,p,f,batch=batch[count] if batch else None)
-            env, policy, _, _ = load_stuff(cfg_file,weight_file,phase=p,num_hidden=num_hidden)
+            env, policy, _, _ = load_stuff(cfg_file,weight_file,phase=p,n_hidden=n_hidden)
             ff_coefficient = f if ff_coef is None else ff_coef[count]
 
             data0, loss, ang_dev, lat_dev = test(env,policy,ff_coefficient=ff_coefficient,is_channel=is_channel,
