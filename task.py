@@ -4,6 +4,7 @@ import numpy as np
 from typing import Any
 from typing import Union
 
+go_time = 0.44
 
 class CentreOutFF(mn.environment.Environment):
   """A reach to a random target from a random starting position."""
@@ -59,7 +60,7 @@ class CentreOutFF(mn.environment.Environment):
         if go_cue_random:
           go_cue_time = np.random.uniform(self.go_cue_range[0],self.go_cue_range[1],batch_size)
         else:
-          go_cue_time = np.tile(0.1,batch_size)
+          go_cue_time = np.tile(go_time,batch_size)
 
       self.go_cue_time = go_cue_time
 
@@ -91,12 +92,12 @@ class CentreOutFF(mn.environment.Environment):
 
       # specify go cue time
       if go_cue_random is None:
-        go_cue_time = np.tile(0.1,batch_size)
+        go_cue_time = np.tile(go_time,batch_size)
       else:
         if go_cue_random:
           go_cue_time = np.random.uniform(self.go_cue_range[0],self.go_cue_range[1],batch_size)
         else:
-          go_cue_time = np.tile(0.1,batch_size)
+          go_cue_time = np.tile(go_time,batch_size)
       self.go_cue_time = go_cue_time
       
     self.effector.reset(options={"batch_size": batch_size,"joint_state": joint_state})
