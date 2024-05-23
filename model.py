@@ -223,14 +223,18 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
   }
 
   while not terminated:
-    action, h = policy(obs,h)
-    obs, terminated, info = env.step(action=action)
 
     # add disturn hidden activity
     if disturb_hidden:
-      if env.elapsed==t_disturb_hidden:
+      if np.abs(env.elapsed-t_disturb_hidden)<1e-3:
+        print('DONE!!!!')
         dh = d_hidden.repeat(1,batch_size,1)
         h += dh
+
+    action, h = policy(obs,h)
+    obs, terminated, info = env.step(action=action)
+
+    
     
     data['all_hidden'].append(h[0, :, None, :])
     data['all_muscle'].append(info['states']['muscle'][:, 0, None, :])
