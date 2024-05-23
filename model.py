@@ -227,7 +227,7 @@ def run_episode(env,policy,batch_size=1, catch_trial_perc=50,condition='train',
     # add disturn hidden activity
     if disturb_hidden:
       if np.abs(env.elapsed-t_disturb_hidden)<1e-3:
-        print('DONE!!!!')
+        #print('DONE!!!!')
         dh = d_hidden.repeat(1,batch_size,1)
         h += dh
 
