@@ -171,9 +171,14 @@ def cal_loss(data, loss_weight=None):
   loss['jerk'] = th.mean(th.sum(th.square(th.diff(data['vel'], n=2, dim=1)), dim=-1))
   loss['muscle'] = th.mean(th.sum(data['all_force'], dim=-1))
   loss['muscle_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_force'], n=1, dim=1)), dim=-1))
-  loss['hidden'] = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
-  loss['hidden_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=1, dim=1)), dim=-1))
-  loss['hidden_jerk'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=3, dim=1)), dim=-1))
+  loss['hidden'] = th.mean(th.square(data['all_hidden']))
+  loss['hidden_derivative'] = th.mean(th.square(th.diff(data['all_hidden'], n=1, dim=1)))
+  loss['hidden_jerk'] = th.mean(th.square(th.diff(data['all_hidden'], n=3, dim=1)))
+
+  #loss['hidden'] = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
+  #loss['hidden_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=1, dim=1)), dim=-1))
+  #loss['hidden_jerk'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=3, dim=1)), dim=-1))
+  
   
 
   if loss_weight is None:
@@ -282,10 +287,10 @@ if __name__ == "__main__":
 
     if trainall:
 
-      phases = ['growing_up','NF1','FF1','NF2','FF2','FF2']
-      ff_coeffs = [0,0,8,0,8,-8]
+      phases = ['growing_up','NF1','FF1','NF2','FF2']
+      ff_coeffs = [0,0,8,0,8]
 
-      n_batches = [20010,10001,3201,10001,3201,3201] # for Sim_fixed_XX
+      n_batches = [20010,10001,3201,10001,3201] # for Sim_fixed_XX
       #n_batches = [20010,2001,10001,7001,10001,10001] # for Sim_random_XX
 
       #n_batches = [10,10,10,10,10,10] # for test
@@ -316,3 +321,6 @@ if __name__ == "__main__":
               result = future.result()
             except Exception as e:
               print(f"Error in iteration {futures[future]}: {e}")
+
+
+      

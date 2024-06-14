@@ -7,27 +7,24 @@ from utils import *
 from get_utils import get_dir
 
 
-def plot_training_log(log,loss_type,w=50,figsize=(10,3)):
+def plot_learning_curve(ax,loss,loss_type=None,w=None):
     """
         loss_type: 'position_loss' or 'hidden_loss' or 'muscle_loss' or 'overall_loss'
     """
-    fig, ax = plt.subplots(figsize=figsize)
-    if isinstance(log,dict):
-       log = log[loss_type]
+    if isinstance(loss,dict):
+       loss = loss[loss_type]
     
-    if all(isinstance(item, list) for item in log):
-        loss = list(np.array(log).mean(axis=1))
-    else:    
-        loss  = log
+    if all(isinstance(item, list) for item in loss):
+        loss = list(np.array(loss).mean(axis=1))
 
-    loss = window_average(np.array(loss),w=w)
+    if w is not None:
+        loss = window_average(np.array(loss),w=w)
 
     ax.semilogy(loss)
 
-    ax.set_ylabel("Loss")
-    ax.set_xlabel("Batch #")
-    #print(np.mean(loss[:-int(1000/w)]))
-    return fig, ax
+    ax.set_ylabel('')
+    ax.set_xlabel('')
+    return ax
 
 
 def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis',s=70):
@@ -70,6 +67,18 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis',s
 
         for i in range(n_reach):
             ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.tick_params(left = False,bottom = False) 
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+
     
 
 def plot_learning(loss,figsize=(6,10),show_saving=False,gap=2000,palette_colors = None):
