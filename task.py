@@ -4,8 +4,8 @@ import numpy as np
 from typing import Any
 from typing import Union
 
-#go_time = 0.44
-go_time = 0.10
+go_time = 0.44
+#go_time = 0.10
 
 class CentreOutFF(mn.environment.Environment):
   """A reach to a random target from a random starting position."""

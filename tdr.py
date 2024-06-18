@@ -83,5 +83,5 @@ def orth_wrt_map(us, map):
         # Project us onto the current column and subtract the projection from us_orth
         us_orth = us_orth - np.dot(map[:,i], us_orth)/np.linalg.norm(map[:,i])**2 * map[:,i][:,None]
     us_orth_norm = us_orth / np.linalg.norm(us_orth)  # Normalize the orthogonal vector
-    return us_orth_norm
+    return us_orth, us_orth_norm
 

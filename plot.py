@@ -44,12 +44,17 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis',s
     #color_list = [plt.cm.brg(cond / (2 * np.pi)) for cond in angle_set]
     color = np.array([0.5,0.5,0.5]) 
 
+    # colormap = plt.cm.viridis
+
+    # color_list = [colormap(i/7) for i in range(8)]
+
+
     for i in range(n_reach):
-        ax.scatter(target_x[i], target_y[i],color=color,s=s) # color_list[i]
+        ax.scatter(target_x[i], target_y[i],color=color,s=s) # color_list[i] color
 
     # plot the line the connect initial and final positions
-    for i in range(n_reach):
-        ax.plot([xy[i, 0, 0], target_xy[i, -1, 0]], [xy[i, 0, 1], target_xy[i, -1, 1]], color='k', alpha=0.2, linewidth=0.5,linestyle='--')
+    # for i in range(n_reach):
+    #     ax.plot([xy[i, 0, 0], target_xy[i, -1, 0]], [xy[i, 0, 1], target_xy[i, -1, 1]], color='k', alpha=0.2, linewidth=0.5,linestyle='--')
 
     # plot lateral deviation line
     if plot_lat:
