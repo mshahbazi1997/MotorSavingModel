@@ -175,9 +175,9 @@ def cal_loss(data, loss_weight=None):
   loss['hidden_derivative'] = th.mean(th.square(th.diff(data['all_hidden'], n=1, dim=1)))
   loss['hidden_jerk'] = th.mean(th.square(th.diff(data['all_hidden'], n=3, dim=1)))
 
-  #loss['hidden'] = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
-  #loss['hidden_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=1, dim=1)), dim=-1))
-  #loss['hidden_jerk'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=3, dim=1)), dim=-1))
+  # loss['hidden'] = th.mean(th.sum(th.square(data['all_hidden']), dim=-1))
+  # loss['hidden_derivative'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=1, dim=1)), dim=-1))
+  # loss['hidden_jerk'] = th.mean(th.sum(th.square(th.diff(data['all_hidden'], n=3, dim=1)), dim=-1))
   
   
 

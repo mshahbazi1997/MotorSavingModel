@@ -203,9 +203,6 @@ def calculate_lateral_deviation(xy, tg, vel=None):
         lateral_vel = np.linalg.norm(vel - projection,axis=2)
         opt['lateral_vel'] = np.mean(lateral_vel,axis=-1)
 
-
-
-
     return sign*max_laterl_dev, init, endp, opt
 
 def optimize_channel(cfg_file,weight_file):
