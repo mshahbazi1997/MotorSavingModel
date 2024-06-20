@@ -148,6 +148,11 @@ def plot_learning(loss,figsize=(6,10),show_saving=False,gap=2000,palette_colors 
     return fig, ax
 
 
+def my_plot(ax,y,color,):
+
+
+
+
 def plot_force(ax,force_mag,vel_mag,color='b',dt=0.01,b=8,lw=4):
     """
         force_mag: (n_reach, n_time)
