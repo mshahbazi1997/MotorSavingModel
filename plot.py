@@ -5,6 +5,12 @@ import json
 from copy import deepcopy
 from utils import *
 from get_utils import get_dir
+from matplotlib.colors import ListedColormap
+
+
+fontsize_label = 7
+fontsize_tick = 7
+fontsize_legend = 7
 
 
 def plot_learning_curve(ax,loss,loss_type=None,w=None):
@@ -36,8 +42,18 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis',s
     ax.set_ylim([0.3, 0.65])
     ax.set_xlim([-0.3, 0.])
 
+    if cmap is None:
+        colors = [[184/255, 130/255, 23/255, 1]]  # Single color: red
+        cmap = ListedColormap(colors,'regions',N=1)
+
     plotor = mn.plotor.plot_pos_over_time
     plotor(axis=ax, cart_results=xy,cmap=cmap)
+
+    fg = ax.get_figure()
+    children = fg.get_children()
+    colorbar_ax = children[-1]  # Assuming the colorbar is the last axes object
+    colorbar_ax.remove()
+
 
     angle_set = np.deg2rad(np.arange(0, 360, 45))  # 8 directions
     #angle_set = np.deg2rad(np.array([0,45,60,75,90,105,120,135,180,225,315]))
