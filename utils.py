@@ -6,6 +6,7 @@ import pandas as pd
 from itertools import product
 import matplotlib.pyplot as plt
 from copy import deepcopy
+from sklearn.utils import resample
 
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
@@ -249,6 +250,29 @@ def sweep_loss():
         lw[idx][4] = mhhw[1]
         lw[idx][5] = mhhw[2]
     return lw
+
+
+
+def bootstrap_ci(data, n_boot=1000, ci=95):
+    """
+    Calculate the bootstrap confidence interval.
+    """
+    boot_means = []
+    for _ in range(n_boot):
+        boot_sample = resample(data)
+        boot_means.append(np.mean(boot_sample))
+    
+    lower = np.percentile(boot_means, (100-ci)/2)
+    upper = np.percentile(boot_means, 100-(100-ci)/2)
+    
+    return (lower, upper)
+
+def ci_func(values):
+    """
+    Compute the lower and upper confidence interval from bootstrap sampling.
+    """
+    ci_low, ci_high = bootstrap_ci(values)
+    return ci_low, ci_high
 
 
 class modelLoss():

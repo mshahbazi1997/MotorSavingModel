@@ -4,13 +4,15 @@ import numpy as np
 import json
 from copy import deepcopy
 from utils import *
-from get_utils import get_dir
 from matplotlib.colors import ListedColormap
+import seaborn as sb
 
 
 fontsize_label = 7
 fontsize_tick = 7
 fontsize_legend = 7
+
+palette_colors = {'FF1':(0,0.5,0),'FF2':(0.4,0.4,0.8),'NF1':(0,0,0),'NF2':(0,0,0)}
 
 
 def plot_learning_curve(ax,loss,loss_type=None,w=None):
@@ -102,10 +104,7 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis',s
 
     
 
-def plot_learning(loss,figsize=(6,10),show_saving=False,gap=2000,palette_colors = None):
-
-    if palette_colors is None:
-        palette_colors = {'FF1': 'g', 'FF2': 'r', 'NF1': 'k', 'NF2': 'k'}
+def plot_learning(loss,figsize=(6,10),show_saving=False,gap=2000,ylabel='Lateral deviation [mm]'):
 
     if show_saving:
         fig,ax = plt.subplots(2,1,figsize=figsize)
@@ -145,12 +144,54 @@ def plot_learning(loss,figsize=(6,10),show_saving=False,gap=2000,palette_colors 
     ax[0].legend()
     ax[0].axhline(y=np.mean(loss2['NF1_mean'][-10:]), color='k', linestyle='--', linewidth=1)
 
+
+    ax[0].set_xlabel('# Batches', fontsize = fontsize_label)
+    ax[0].set_ylabel(ylabel, fontsize = fontsize_label)
+    ax[0].legend(title = '',frameon = False, bbox_to_anchor= (1,1), fontsize=fontsize_legend)
+    ax[0].legend().set_visible(False)
+    ax[0].xaxis.set_tick_params(labelsize=fontsize_tick)
+    ax[0].yaxis.set_tick_params(labelsize=fontsize_tick)
+    ax[0].spines['top'].set_visible(False)
+    ax[0].spines['right'].set_visible(False)
+
     return fig, ax
 
 
-def my_plot(ax,y,color,):
+def my_pointplot(T,x='phase',y='value',hue='phase',figsize=(0.8,1),xlabel='',ylabel='',ax=None,linewidth=1.5,linestyle='-',color=None):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+
+    if color is not None:
+        palette_colors = None
+    sb.pointplot(x=x, y=y, data=T, hue=hue, ax=ax, palette=palette_colors,errorbar=ci_func,linewidth=linewidth,linestyle=linestyle,color=color)
 
 
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.xaxis.set_tick_params(labelsize=fontsize_tick)
+    ax.yaxis.set_tick_params(labelsize=fontsize_tick)
+    ax.tick_params(bottom=False)
+    ax.set_xlabel(xlabel, fontsize=fontsize_label)
+    ax.set_ylabel(ylabel, fontsize=fontsize_label)
+    return ax
+
+def my_barplot(T,x='size',y='value',hue='phase',figsize=(2.7, 1.8)):
+    
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+
+    sb.barplot(x=x, y=y, data=T, hue=hue, ax=ax, palette=palette_colors,width=0.5,errorbar=ci_func)
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.xaxis.set_tick_params(labelsize=fontsize_tick)
+    ax.yaxis.set_tick_params(labelsize=fontsize_tick)
+    ax.tick_params(bottom=False)
+    ax.set_xlabel('# hidden unit', fontsize=fontsize_label)
+    ax.legend().set_visible(False)
+
+    return fig, ax
+
+#def my_plot(ax,y,color,):
 
 
 def plot_force(ax,force_mag,vel_mag,color='b',dt=0.01,b=8,lw=4):

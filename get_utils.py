@@ -12,6 +12,7 @@ import re
 
 
 base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
+phases = {'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]}
 
 def get_dir(folder_name,model_name,phase,ff_coef,batch=None):
     """
@@ -47,15 +48,9 @@ def get_dir(folder_name,model_name,phase,ff_coef,batch=None):
 
         found = False
 
-    # cfg_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_cfg.json'))[0]
-    # loss_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_log.json'))[0]
-    # if batch is None:
-    #     weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_FFCoef={ff_coef}_weights'))[0]
-    # else:
-    #     weight_file = list(Path(data_dir).glob(f'{model_name}_phase={phase}_batch={batch}_FFCoef={ff_coef}_weights'))[0]
     return weight_file, cfg_file, loss_file
 
-def get_data(folder_name,model_name,phase={'NF1':[0]},ff_coef=None,is_channel=False,
+def get_data(folder_name,model_name,phase=phases,ff_coef=None,is_channel=False,
              batch_size=8,catch_trial_perc=0,condition='test',go_cue_random=None,return_loss=False,
              disturb_hidden=False,t_disturb_hidden=0.15,d_hidden=None,batch=None,seed=None,n_hidden=128):
     
@@ -102,7 +97,7 @@ def return_ignore(folder_name,num_model,phase='FF2',ff_coef=8):
     
     return ignore
 
-def get_loss(folder_name,num_model,phases,loss_type='position',w=1,target=None,ignore=[]):
+def get_loss(folder_name,num_model,phases=phases,loss_type='lateral',w=1,target=None,ignore=[]):
     from utils import window_average
     import json
 
