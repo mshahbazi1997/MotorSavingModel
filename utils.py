@@ -275,6 +275,23 @@ def ci_func(values):
     return ci_low, ci_high
 
 
+
+# Normalize the 'us' values
+def normalize_phase_data(df):
+    scale = []
+    normalized_data = df.copy()
+    for model in df['mn'].unique():
+        model_data = df[df['mn'] == model]
+        NF1_value = model_data[model_data['phase'] == 'NF1']['us'].values[0]
+        FF1_value = model_data[model_data['phase'] == 'FF1']['us'].values[0]
+        scaling_factor = FF1_value - NF1_value
+        scale.append(scaling_factor)    
+        # Apply normalization
+        normalized_data.loc[normalized_data['mn'] == model, 'us'] = (
+            model_data['us'] - NF1_value) / scaling_factor
+
+    return normalized_data,scale
+
 class modelLoss():
     def __init__(self):
         #self.n_param = 5

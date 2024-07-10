@@ -6,6 +6,7 @@ from copy import deepcopy
 from utils import *
 from matplotlib.colors import ListedColormap
 import seaborn as sb
+import matplotlib.patches as patches
 
 
 fontsize_label = 7
@@ -13,6 +14,8 @@ fontsize_tick = 7
 fontsize_legend = 7
 
 palette_colors = {'FF1':(0,0.5,0),'FF2':(0.4,0.4,0.8),'NF1':(0,0,0),'NF2':(0,0,0)}
+
+color_reach = [[184/255, 130/255, 23/255, 1]] 
 
 
 def plot_learning_curve(ax,loss,loss_type=None,w=None):
@@ -34,19 +37,15 @@ def plot_learning_curve(ax,loss,loss_type=None,w=None):
     ax.set_xlabel('')
     return ax
 
-
-def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis',s=70):
+def plot_simulations(ax, xy, target_xy,cmap=None,color_dot=None,s=70,set_lim=True,plot_circle=False,set_label=False):
     target_x = target_xy[:, -1, 0]
     target_y = target_xy[:, -1, 1]
 
     n_reach = target_xy.shape[0]
 
-    ax.set_ylim([0.3, 0.65])
-    ax.set_xlim([-0.3, 0.])
-
     if cmap is None:
-        colors = [[184/255, 130/255, 23/255, 1]]  # Single color: red
-        cmap = ListedColormap(colors,'regions',N=1)
+        cmap = ListedColormap(color_reach,N=1)
+
 
     plotor = mn.plotor.plot_pos_over_time
     plotor(axis=ax, cart_results=xy,cmap=cmap)
@@ -57,50 +56,57 @@ def plot_simulations(ax, xy, target_xy, plot_lat=True, vel=None,cmap='viridis',s
     colorbar_ax.remove()
 
 
-    angle_set = np.deg2rad(np.arange(0, 360, 45))  # 8 directions
-    #angle_set = np.deg2rad(np.array([0,45,60,75,90,105,120,135,180,225,315]))
-    #color_list = [plt.cm.brg(cond / (2 * np.pi)) for cond in angle_set]
-    color = np.array([0.5,0.5,0.5]) 
-
-    # colormap = plt.cm.viridis
-
-    # color_list = [colormap(i/7) for i in range(8)]
+    if color_dot is None:
+        colormap = plt.cm.viridis
+        colors = [colormap(i/7) for i in range(8)]
+    else:
+        colors = np.tile(color_dot,(n_reach,1))
 
 
     for i in range(n_reach):
-        ax.scatter(target_x[i], target_y[i],color=color,s=s) # color_list[i] color
+        ax.scatter(target_x[i], target_y[i],color=colors[i],s=s)
 
-    # plot the line the connect initial and final positions
-    # for i in range(n_reach):
-    #     ax.plot([xy[i, 0, 0], target_xy[i, -1, 0]], [xy[i, 0, 1], target_xy[i, -1, 1]], color='k', alpha=0.2, linewidth=0.5,linestyle='--')
+    
 
-    # plot lateral deviation line
-    if plot_lat:
-        _, init, endp, _ = calculate_lateral_deviation(xy, target_xy)
-        for i in range(n_reach):
-            ax.plot([init[i, 0], endp[i, 0]], [init[i, 1], endp[i, 1]], color='b', alpha=1, linewidth=0.5,linestyle='-')
+    if plot_circle:
+        # Circle parameters
+        start_position = np.array([1.047, 1.570])
+        start_position = np.array([-0.13366797,0.43435786])
 
+        radius = 0.1
+        # Plot the circle
+        circle = patches.Circle(start_position, radius, edgecolor='blue', facecolor='none', lw=2)
+        ax.add_patch(circle)
 
-    if vel is not None:
-
-        # plot the line that connect initial and peak velocity positions
-        vel_norm = np.linalg.norm(vel, axis=-1)
-        idx = np.argmax(vel_norm, axis=1)
-        xy_peakvel = xy[np.arange(xy.shape[0]), idx, :]
-
-        for i in range(n_reach):
-            ax.plot([xy[i, 0, 0], xy_peakvel[i, 0]], [xy[i, 0, 1], xy_peakvel[i, 1]], color='k', alpha=1, linewidth=1.5,linestyle='-')
+    if set_lim:
+        ax.set_ylim([0.3, 0.65])
+        ax.set_xlim([-0.3, 0.])
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
 
-    ax.set_xticklabels([])
-    ax.set_yticklabels([])
+    ax.xaxis.set_tick_params(labelsize=fontsize_tick)
+    ax.yaxis.set_tick_params(labelsize=fontsize_tick)
+
+    
+
     ax.tick_params(left = False,bottom = False) 
-    ax.set_xlabel('')
-    ax.set_ylabel('')
+
+    if set_label:
+        ax.set_xlabel('X [m]', fontsize = fontsize_label)
+        ax.set_ylabel('Y [m]', fontsize = fontsize_label)
+        
+    else:
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+
+        ax.spines['left'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+    return ax
+
+
 
     
 
@@ -163,6 +169,9 @@ def my_pointplot(T,x='phase',y='value',hue='phase',figsize=(0.8,1),xlabel='',yla
 
     if color is not None:
         palette_colors = None
+    else:
+        palette_colors = {'FF1':(0,0.5,0),'FF2':(0.4,0.4,0.8),'NF1':(0,0,0),'NF2':(0,0,0)}
+
     sb.pointplot(x=x, y=y, data=T, hue=hue, ax=ax, palette=palette_colors,errorbar=ci_func,linewidth=linewidth,linestyle=linestyle,color=color)
 
 
@@ -175,137 +184,103 @@ def my_pointplot(T,x='phase',y='value',hue='phase',figsize=(0.8,1),xlabel='',yla
     ax.set_ylabel(ylabel, fontsize=fontsize_label)
     return ax
 
-def my_barplot(T,x='size',y='value',hue='phase',figsize=(2.7, 1.8)):
+def my_barplot(T,x='size',y='value',hue='phase',figsize=(2.7, 1.8),width=0.5):
     
     fig, ax = plt.subplots(1, 1, figsize=figsize)
 
-    sb.barplot(x=x, y=y, data=T, hue=hue, ax=ax, palette=palette_colors,width=0.5,errorbar=ci_func)
+    sb.barplot(x=x, y=y, data=T, hue=hue, ax=ax, palette=palette_colors,width=width,errorbar=ci_func)
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.xaxis.set_tick_params(labelsize=fontsize_tick)
     ax.yaxis.set_tick_params(labelsize=fontsize_tick)
     ax.tick_params(bottom=False)
-    ax.set_xlabel('# hidden unit', fontsize=fontsize_label)
+    ax.set_xlabel('', fontsize=fontsize_label)
     ax.legend().set_visible(False)
 
     return fig, ax
 
-#def my_plot(ax,y,color,):
+def my_plot(x,y,colors,figsize,labels=None,ylim=None,plot0=False,ylabel='',linestyle=None,alpha=1):
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
 
+    if linestyle is None:
+        linestyle = ['-']*y.shape[1]
 
-def plot_force(ax,force_mag,vel_mag,color='b',dt=0.01,b=8,lw=4):
-    """
-        force_mag: (n_reach, n_time)
-        vel_mag: (n_reach, n_time)
-    """
-    
-    n_reach = np.shape(force_mag)[0]
-    x = np.linspace(0, np.shape(force_mag)[1]*dt, np.shape(force_mag)[1])
-
-    max_force = 0
-    max_vel = 0
-
-    for i in range(n_reach):
-
-        ep = force_mag[i,:]
-        vel = vel_mag[i,:]
-
-        if np.max(ep)>max_force:
-            max_force = np.max(ep)
-
-        if np.max(vel)>max_vel:
-            max_vel = np.max(vel)
-
-        ax[i].plot(x,ep,label='Force',color=color,linewidth=lw)
-        ax[i].plot(x,b*vel,label='Ideal',alpha=0.5,linestyle='--',color=color,linewidth=lw)
-
-        ax[i].axhline(y=00,color='k')
-        ax[i].set_ylabel('Force [N]')
-
-    for i in range(n_reach):
-        ax[i].set_ylim([-0.5,max_vel*b+0.5])
-    ax[i].set_xlabel('Time [s]')
-    ax[0].legend()
-    return ax
-
-def plot_kinematic(ax,vel,xy,tg,dt=0.01):
-    """
-    """
-
-
-    vel = np.array(vel)
-    xy = np.array(xy)
-    tg = np.array(tg)
-
-    # use for calculating lateral and parallel speed
-    #target = tg[:,-1,:]
-    #init = xy[:,0,:]
-
-    #line_vector = target - init
-    #line_vector2 = np.tile(line_vector[:,None,:],(1,vel.shape[1],1))
-
-    #projection = np.sum(line_vector2 * vel, axis=-1)/np.sum(line_vector2 * line_vector2, axis=-1)
-    #projection = line_vector2 * projection[:,:,np.newaxis]
-
-    #lat_speed = vel - projection
-
-    #vel = lat_speed
-    #vel = projection
-
-    color_list = ['blue','orange','red','green']
-
-    x = np.linspace(0, np.shape(vel)[1]*dt, np.shape(vel)[1])
-
-    for i in range(8):
-
-        ax[i,0].plot(x,xy[i,:,0],color=color_list[2],label='x')
-        ax[i,0].plot(x,xy[i,:,1],color=color_list[3],label='y')
-        ax[i,0].plot(x,tg[i,:,0],color=color_list[0])
-        ax[i,0].plot(x,tg[i,:,1],color=color_list[1])
-        ax[i,0].set_ylabel('position [m]')
-
-        ax[i,1].plot(x,vel[i,:,0],color=color_list[0],label='x')
-        ax[i,1].plot(x,vel[i,:,1],color=color_list[1],label='y')
-        ax[i,1].axhline(y=0, color='k')
-        ax[i,1].set_ylabel('velocity [m/s]')
-        
-
-    ax[i,0].legend()
-    ax[i,1].legend()
-    
-    ax[i,0].set_xlabel('Time [s]')
-    ax[i,1].set_xlabel('Time [s]')
-        
-    return ax
-
-
-def plot_traj(ax,X_latent_list, plot_scatter=1, marker=['x', 'o', '*', 's', 'D', 'v', '>', '<', 'p', '^'],alpha=[1,0.5,0.4,0.2], which_times=[24], dim=3, which_latent=[0,1,2]):
-    angle_set = np.deg2rad(np.arange(0, 360, 45))  # 8 directions
-    color_list = [plt.cm.brg(cond / (2 * np.pi)) for cond in angle_set]
-
-    if dim == 2:
-        for i,X_latent in enumerate(X_latent_list):
-            if plot_scatter:
-                for tr in range(8):
-                    ax.scatter(X_latent[tr, which_times, which_latent[0]], X_latent[tr, which_times, which_latent[1]], color=color_list[tr],marker=marker[i])
+    for i in range(y.shape[1]):
+        if colors is None:
+            ax.plot(x,y[:,i])
+        else:
+            if labels is not None:
+                ax.plot(x,y[:,i],color=colors[i],label=labels[i],linewidth=2,linestyle=linestyle[i],alpha=alpha)
             else:
-                for tr in range(8):
-                    ax.plot(X_latent[tr, which_times, which_latent[0]].T, X_latent[tr, which_times, which_latent[1]].T, color=color_list[tr],alpha=alpha[i])
+                ax.plot(x,y[:,i],color=colors[i],linewidth=2,linestyle=linestyle[i],alpha=alpha)
 
-    elif dim == 3:
-        for i,X_latent in enumerate(X_latent_list):
-            if plot_scatter:
-                for tr in range(8):
-                    ax.scatter3D(X_latent[tr, which_times, which_latent[0]], X_latent[tr, which_times, which_latent[1]], X_latent[tr, which_times, which_latent[2]], color=color_list[tr],marker=marker[i])
-            else:
-                for tr in range(8):
-                    ax.plot3D(X_latent[tr, which_times, which_latent[0]].T, X_latent[tr, which_times, which_latent[1]].T, X_latent[tr, which_times, which_latent[2]].T, color=color_list[tr],alpha=alpha[i])
+    if plot0:
+        ax.axhline(y=0, color='k', linestyle='--',linewidth=0.5)
 
-    else:
-        print("Dimension must be 2 or 3!")
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.tick_params(left = False,bottom = False) 
 
-    #return fig, ax
+    if ylim is not None:    
+        ax.set_ylim(ylim)
+    ax.set_xlabel('Time [s]', fontsize = fontsize_label)
+    ax.set_ylabel(ylabel, fontsize = fontsize_label)
+    ax.xaxis.set_tick_params(labelsize=fontsize_tick)
+    ax.yaxis.set_tick_params(labelsize=fontsize_tick)
+
+    if labels is not None:
+        ax.legend(fontsize=fontsize_legend,loc='lower right',frameon = False)
+
+    return fig, ax
+
+
+def plot_tdr(data,figsize=(2.5,2.5)):
+    fig,ax = plt.subplots(1,1,figsize=figsize)
+
+    n_cond = 8
+    colormap = plt.cm.viridis
+    colors = [colormap(i/7) for i in range(8)]
+
+    s1_size = 7
+    s2_size = 7
+    s3_size = 7
+    s4_size = 7
+
+    s1 = 'o'
+    s2 = '^'
+    s3 = 's'
+    s4 = '*'
+
+    alpha = 1
+
+    for i in range(n_cond):
+        
+        if i == 0:
+            ax.plot(data[0][i,0], data[0][i,1],s1, markersize=s1_size, color=colors[i],alpha=alpha,label='NF1',markeredgewidth=0)
+            ax.plot(data[1][i,0], data[1][i,1],s2, markersize=s2_size, markerfacecolor=colors[i],alpha=alpha,label='FF1',markeredgewidth=0)
+            ax.plot(data[2][i,0], data[2][i,1],s3, markersize=s3_size, color=colors[i],alpha=alpha,label='NF2',markeredgewidth=0)
+            ax.plot(data[3][i,0], data[3][i,1],s4, markersize=s4_size, markerfacecolor=colors[i],alpha=alpha,label='FF2',markeredgewidth=0)
+        else:
+            ax.plot(data[0][i,0], data[0][i,1],s1, markersize=s1_size, color=colors[i],alpha=alpha,markeredgewidth=0)
+            ax.plot(data[1][i,0], data[1][i,1],s2, markersize=s2_size, markerfacecolor=colors[i],alpha=alpha,markeredgewidth=0)
+            ax.plot(data[2][i,0], data[2][i,1],s3, markersize=s3_size, color=colors[i],alpha=alpha,markeredgewidth=0)
+            ax.plot(data[3][i,0], data[3][i,1],s4, markersize=s4_size, markerfacecolor=colors[i],alpha=alpha,markeredgewidth=0)
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    #ax.set_aspect('equal')
+    ax.set_xticklabels([])
+    ax.set_yticklabels([])
+    ax.tick_params(left = False,bottom = False) 
+    ax.set_xlabel('TDR Axis 1', fontsize = fontsize_label)
+    ax.set_ylabel('TDR Axis 2', fontsize = fontsize_label)
+
+    ax.legend(fontsize=fontsize_legend,loc='lower left',frameon = False)
+
+    return fig, ax
 
 
 def plot_Gs(G,grid = None,labels=[],titles=[],figsize=(12,12),vmin=None, vmax=None):
