@@ -11,7 +11,9 @@ import re
 #from scipy.linalg import pinv
 
 
-base_dir = os.path.join(os.path.expanduser('~'),'Documents','Data','MotorNet')
+root_dir = '/Volumes/T9/MotorNet'
+base_dir = root_dir
+
 phases = {'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]}
 
 def get_dir(folder_name,model_name,phase,ff_coef,batch=None):
