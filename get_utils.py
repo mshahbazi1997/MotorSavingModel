@@ -12,6 +12,8 @@ import re
 
 
 root_dir = '/Volumes/T9/MotorNet'
+root_dir = os.path.join(os.path.expanduser('~'),'Documents/Data/MotorNet')
+
 base_dir = root_dir
 
 phases = {'NF1':[0],'FF1':[8],'NF2':[0],'FF2':[8]}
